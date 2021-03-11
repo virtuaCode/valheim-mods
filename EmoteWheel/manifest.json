@@ -1,0 +1,9 @@
+{
+    "name": "EmoteWheel",
+    "version_number": "1.0.1",
+    "website_url": "https://github.com/virtuaCode/valheim-mods",
+    "description": "This mod adds an user interface for emote animations to let them be used in an easier and faster way.",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.800"
+    ]
+}
