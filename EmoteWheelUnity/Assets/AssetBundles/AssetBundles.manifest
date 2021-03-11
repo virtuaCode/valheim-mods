@@ -1,0 +1,7 @@
+ManifestFileVersion: 0
+CRC: 481463200
+AssetBundleManifest:
+  AssetBundleInfos:
+    Info_0:
+      Name: emotewheel
+      Dependencies: {}
