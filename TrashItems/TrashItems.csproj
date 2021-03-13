@@ -11,6 +11,10 @@
 			<HintPath>..\Libraries\0Harmony20.dll</HintPath>
 			<Private>false</Private>
 		</Reference>
+		<Reference Include="assembly_guiutils">
+		  <HintPath>..\Libraries\assembly_guiutils.dll</HintPath>
+		  <Private>false</Private>
+		</Reference>
 		<Reference Include="assembly_utils">
 			<HintPath>..\Libraries\assembly_utils.dll</HintPath>
 			<Private>false</Private>
@@ -49,6 +53,10 @@
 		  <HintPath>..\Libraries\UnityEngine.UI.dll</HintPath>
 		  <Private>false</Private>
 		</Reference>
+		<Reference Include="UnityEngine.UIModule">
+		  <HintPath>..\Libraries\UnityEngine.UIModule.dll</HintPath>
+		  <Private>false</Private>
+		</Reference>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -64,9 +72,11 @@
 	</Target>
 	<ItemGroup>
 	  <None Remove="res\trash.png" />
+	  <None Remove="res\trashmask.png" />
 	</ItemGroup>
 	<ItemGroup>
 	  <EmbeddedResource Include="res\trash.png" />
+	  <EmbeddedResource Include="res\trashmask.png" />
 	</ItemGroup>
 	<ItemGroup>
 		<Reference Update="System.Data">

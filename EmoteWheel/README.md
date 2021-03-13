@@ -1,6 +1,12 @@
 ## Overview
 
-This mod adds an user interface for emote animations to let them be used in an easier and faster way. The menu will be visible by holding the 'T' key (can be changed). To trigger an emote animation press the left mouse button in the menu. Releasing the hotkey will hide the menu again.
+This mod adds an user interface for emote animations to let them be used in an easier and faster way. The menu will be visible by holding the 'T' key (can be changed).
+
+To trigger an emote animation release the Hotkey after selecting an emote. (When TriggerOnRelease = true)
+
+To trigger an emote animation press the left mouse button after selecting an emote. (When TriggerOnClick = true)
+
+*Info: This mod should only be installed on the client side.*
 
 
 ## Manual Installation
@@ -15,7 +21,25 @@ To install the mod just move the downloaded EmoteWheel.dll to the `<valheim-fold
 
 A config file will be created after running the game once while the mod is installed:
 `<valheim-folder>\BepInEx\config\virtuacode.valheim.emotewheel.cfg`
-There you can change the variable Hotkey to any key you like.
+
+    [General]
+
+    ## Hotkey for opening emote wheel menu
+    # Setting type: String
+    # Default value: t
+    Hotkey = t
+
+    ## Releasing the Hotkey will trigger the selected emote
+    # Setting type: Boolean
+    # Default value: true
+    TriggerOnRelease = true
+
+    ## Click with left mouse button will trigger the selected emote
+    # Setting type: Boolean
+    # Default value: false
+    TriggerOnClick = false
+
+Of course you can have both `TriggerOnRelease` and `TriggerOnClick` set to true if you want.
 
 
 ## Source Code

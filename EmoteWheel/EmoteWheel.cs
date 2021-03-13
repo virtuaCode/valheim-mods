@@ -9,14 +9,20 @@ using BepInEx.Configuration;
 
 namespace EmoteWheel
 {
-    [BepInPlugin("virtuacode.valheim.emotewheel", "Emote Wheel Mod", "1.0.0")]
+    [BepInPlugin("virtuacode.valheim.emotewheel", "Emote Wheel Mod", "1.1.0")]
     public class EmoteWheel : BaseUnityPlugin
     {
         private Harmony harmony;
         public static ConfigEntry<string> Hotkey;
+        public static ConfigEntry<bool> TriggerOnRelease;
+        public static ConfigEntry<bool> TriggerOnClick;
+
+
         public void Awake()
         {
             Hotkey = Config.Bind("General", "Hotkey", "t", "Hotkey for opening emote wheel menu");
+            TriggerOnRelease = Config.Bind("General", "TriggerOnRelease", true, "Releasing the Hotkey will trigger the selected emote");
+            TriggerOnClick = Config.Bind("General", "TriggerOnClick", false, "Click with left mouse button will trigger the selected emote");
 
             harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
             Logger.LogInfo(typeof(EmoteWheel).Name + " Loaded!");
@@ -39,15 +45,13 @@ namespace EmoteWheel
 
         void Awake()
         {
-
-
             LoadAssets();
             GameObject uiPrefab = assets.LoadAsset<GameObject>("assets/emotewheel/emotewheel.prefab");
-            
+
             var go = Instantiate<GameObject>(uiPrefab, transform);
 
             ui = go.AddComponent<EmoteWheelUI>();
-            
+
             go.SetActive(false);
             visible = false;
         }
@@ -63,71 +67,100 @@ namespace EmoteWheel
             }
         }
 
+        void OnDestroy()
+        {
+            assets.Unload(true);
+        }
+
         private void Update()
         {
             if (Input.GetKey(EmoteWheel.Hotkey.Value))
             {
-			    Player localPlayer = Player.m_localPlayer;
-			    if (localPlayer == null || localPlayer.IsDead() || localPlayer.InCutscene() || localPlayer.IsTeleporting())
-			    {
+                Player localPlayer = Player.m_localPlayer;
+                if (localPlayer == null || localPlayer.IsDead() || localPlayer.InCutscene() || localPlayer.IsTeleporting())
+                {
                     ui.gameObject.SetActive(false);
                     visible = false;
-				    return;
-			    }
-			    if ((!EmoteGui.inventoryVisible) && (Chat.instance == null || !Chat.instance.HasFocus()) && !global::Console.IsVisible() && !Menu.IsVisible() && TextViewer.instance && !TextViewer.instance.IsVisible() && !localPlayer.InCutscene() && !GameCamera.InFreeFly() && !Minimap.IsOpen())
-			    {
+                    return;
+                }
+                if ((!EmoteGui.inventoryVisible) && (Chat.instance == null || !Chat.instance.HasFocus()) && !global::Console.IsVisible() && !Menu.IsVisible() && TextViewer.instance && !TextViewer.instance.IsVisible() && !localPlayer.InCutscene() && !GameCamera.InFreeFly() && !Minimap.IsOpen())
+                {
                     ui.gameObject.SetActive(true);
                     visible = true;
 
-
-                    if (Input.GetMouseButtonDown(0))
+                    if (EmoteWheel.TriggerOnClick.Value && Input.GetMouseButtonDown(0))
                     {
 
-                        string emote = ui.CurrentEmote;
-                        var player = Player.m_localPlayer;
-                            
-
-                        switch(emote)
+                        if (ui.CurrentEmote != null)
                         {
-                            case "point":
-                                player.FaceLookDirection();
-                                player.StartEmote(emote, true);
-                                break;
-                            case "sit":
-                                player.StartEmote(emote, false);
-                                break;
-                            default:
-                                player.StartEmote(emote, true);
-                                break;
+                            PlayEmote(ui.CurrentEmote);
                         }
 
-                        ui.Flash();
                     }
-                        return;
-			    }
+                    return;
+                }
             }
+            else if (EmoteWheel.TriggerOnRelease.Value && Input.GetKeyUp(EmoteWheel.Hotkey.Value))
+            {
+                if (ui.CurrentEmote != null)
+                {
+                    PlayEmote(ui.CurrentEmote);
+                }
+            }
+
             visible = false;
             ui.gameObject.SetActive(false);
-		}
-	}
+        }
+
+        private void PlayEmote(string emote)
+        {
+            var player = Player.m_localPlayer;
+
+            if (!player.IsSitting())
+                StopEmote(player);
+
+            switch (emote)
+            {
+                case "point":
+                    player.FaceLookDirection();
+                    player.StartEmote(emote, true);
+                    break;
+                case "sit":
+                    if (player.IsSitting())
+                        StopEmote(player); 
+                    else
+                        player.StartEmote(emote, false);
+                    break;
+                default:
+                    player.StartEmote(emote, true);
+                    break;
+            }
+
+            ui.Flash();
+        }  
+        private void StopEmote(Player player)
+        {
+            typeof(Player).GetMethod("StopEmote", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(player, new object[] { });
+        }
+    }
 
 
-public class CutoutMask : Image
-	{
-		public override Material materialForRendering
-		{
-			get
-			{
-				Material material = new Material(base.materialForRendering);
-				material.SetInt("_StencilComp", (int)CompareFunction.NotEqual);
-				return material;
-			}
-		}
+    public class CutoutMask : Image
+    {
+        public override Material materialForRendering
+        {
+            get
+            {
+                Material material = new Material(base.materialForRendering);
+                material.SetInt("_StencilComp", (int)CompareFunction.NotEqual);
+                return material;
+            }
+        }
     }
 
 
 
-public class EmoteWheelUI : MonoBehaviour
+    public class EmoteWheelUI : MonoBehaviour
     {
         [System.Serializable]
         public class Item
@@ -143,8 +176,9 @@ public class EmoteWheelUI : MonoBehaviour
         public GameObject textPrefab;
         public Item[] items;
         public Text[] itemTexts;
-        public Color NormalColor;
-        public Color HighlightColor;
+        public Color NormalColor = new Color(1, 1, 1, 0.5f);
+        public Color HighlightColor = Color.white;
+        public Color YellowColor = new Color(1, 0.8235295f, 0);
 
         private Animator animator;
         private int previous = -1;
@@ -152,6 +186,9 @@ public class EmoteWheelUI : MonoBehaviour
         {
             get
             {
+                if (MouseInCenter)
+                    return -1;
+
                 return Mod((int)(Mathf.Round((Angle) / angleStep)), items.Length);
             }
         }
@@ -160,7 +197,23 @@ public class EmoteWheelUI : MonoBehaviour
         {
             get
             {
+                if (Current < 0)
+                    return null;
+
                 return items[Current].command;
+            }
+        }
+
+        public bool MouseInCenter
+        {
+            get
+            {
+                RectTransform rect = cursor.transform.Find("CursorCircle1").GetComponent<RectTransform>();
+
+                float radius = Mathf.Max(rect.rect.width + 10, rect.rect.height + 10) / 2 * GetComponent<Canvas>().scaleFactor;
+                var dir = Input.mousePosition - cursor.transform.position;
+                return dir.magnitude <= radius;
+
             }
         }
 
@@ -191,10 +244,7 @@ public class EmoteWheelUI : MonoBehaviour
             animator = GetComponent<Animator>();
 
             cursor = transform.Find("Cursor").gameObject;
-            highlight =transform.Find("Highlight").gameObject;
-
-            HighlightColor = Color.white;
-            NormalColor = new Color(1, 1, 1, 0.5f);
+            highlight = transform.Find("Highlight").gameObject;
 
             items = new Item[]
             {
@@ -228,8 +278,7 @@ public class EmoteWheelUI : MonoBehaviour
             }
 
             mask.useSpriteMesh = true;
-            mask.color = new Color(1, 0.8235295f, 0);
-            
+            mask.color = YellowColor;
 
             itemTexts = new Text[items.Length];
 
@@ -247,6 +296,21 @@ public class EmoteWheelUI : MonoBehaviour
             }
         }
 
+        void OnDisable()
+        {
+            highlight.SetActive(false);
+            var images = cursor.GetComponentsInChildren<Image>(true);
+            foreach (var image in images)
+            {
+                image.color = HighlightColor;
+
+                if (image.gameObject.name == "Image")
+                {
+                    image.gameObject.SetActive(false);
+                }
+            }
+        }
+
         // Update is called once per frame
         void Update()
         {
@@ -254,9 +318,29 @@ public class EmoteWheelUI : MonoBehaviour
             {
                 if (previous > -1)
                     itemTexts[previous].color = NormalColor;
-                itemTexts[Current].color = HighlightColor;
+
+                if (Current > -1)
+                {
+                    itemTexts[Current].color = HighlightColor;
+                    InventoryGui.instance.m_moveItemEffects.Create(base.transform.position, Quaternion.identity, null, 1f);
+                }
                 previous = Current;
             }
+
+            highlight.SetActive(Current > -1);
+            
+
+            var images = cursor.GetComponentsInChildren<Image>(true);
+            foreach (var image in images)
+            {
+                image.color = Current < 0 ? HighlightColor : YellowColor;
+
+                if (image.gameObject.name == "Image")
+                {
+                    image.gameObject.SetActive(Current > -1);
+                }
+            }
+
 
             cursor.transform.rotation = Quaternion.AngleAxis(Angle, Vector3.forward);
             var highlightAngle = Current * angleStep;

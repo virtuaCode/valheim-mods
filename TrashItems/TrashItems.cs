@@ -6,10 +6,11 @@ using UnityEngine.UI;
 using UnityEngine.Events;
 using System.Reflection;
 using System.IO;
+using System;
 
 namespace ValheimMod
 {
-    [BepInPlugin("virtuacode.valheim.trashitems", "Trash Items Mod", "1.0.0")]
+    [BepInPlugin("virtuacode.valheim.trashitems", "Trash Items Mod", "1.1.0")]
 
     class TrashItems : BaseUnityPlugin
     {
@@ -18,6 +19,7 @@ namespace ValheimMod
         public static bool _clickedTrash = false;
         public static InventoryGui _gui;
         public static Sprite trashSprite;
+        public static Sprite bgSprite;
      
         private void Awake()
         {
@@ -39,10 +41,30 @@ namespace ValheimMod
                 tex.Apply();
                 trashSprite = Sprite.Create(tex, new Rect(0, 0, 64, 64), new Vector2(32, 32), 100);
             }
-            
+
+            trashSprite = LoadSprite("TrashItems.res.trash.png", new Rect(0, 0, 64, 64), new Vector2(32, 32));
+            bgSprite = LoadSprite("TrashItems.res.trashmask.png", new Rect(0, 0, 96, 112), new Vector2(48, 56));
+
             Harmony.CreateAndPatchAll(typeof(TrashItems));
         }
 
+
+        public static Sprite LoadSprite(string path, Rect size, Vector2 pivot, int units = 100)
+        {
+
+            Assembly asm = Assembly.GetExecutingAssembly();
+            Stream trashImg = asm.GetManifestResourceStream(path);
+
+            Texture2D tex = new Texture2D((int) size.width, (int) size.height, TextureFormat.RGBA32, false, true);
+
+            using (MemoryStream mStream = new MemoryStream())
+            {
+                trashImg.CopyTo(mStream);
+                tex.LoadImage(mStream.ToArray());
+                tex.Apply();
+                return Sprite.Create(tex, size, pivot, units);
+            }
+        }
 
 
         public static void Log(string msg)
@@ -55,50 +77,63 @@ namespace ValheimMod
             Debug.LogError("[" + typeof(TrashItems).Name + "] " + msg);
         }
         [HarmonyPatch(typeof(InventoryGui), "Show")]
-        [HarmonyPostfix]
-        public static void Show_Postfix(InventoryGui __instance, Text ___m_weight)
+        [HarmonyPrefix]
+        public static void Show_Prefix(InventoryGui __instance)
         {
             _gui = __instance;
 
-            Transform playerInventory = __instance.m_weight.transform.parent.parent;
-
+            Transform playerInventory = __instance.m_player.transform;
             Transform trash = playerInventory.Find("Trash");
 
             if (trash == null)
             {
-                trash = UnityEngine.Object.Instantiate(playerInventory.Find("Armor"), playerInventory);
-
+                trash = Instantiate(playerInventory.Find("Armor"), playerInventory);
 
                 RectTransform rect = trash.GetComponent<RectTransform>();
 
-                rect.anchoredPosition -= new Vector2(0, 76);
-                Transform tText = trash.Find("ac_text");
+                rect.anchoredPosition -= new Vector2(0, 78);
 
+                // Replace text and color
+                Transform tText = trash.Find("ac_text");
                 if (!tText)
                 {
                     LogErr("ac_text not found!");
                     return;
                 }
-
                 tText.GetComponent<Text>().text = "Trash";
                 tText.GetComponent<Text>().color = Color.red;
 
-                Transform tArmor = trash.Find("armor_icon");
 
+                // Replace armor with trash icon
+                Transform tArmor = trash.Find("armor_icon");
                 if (!tArmor)
                 {
                     LogErr("armor_icon not found!");
                 }
-
                 tArmor.GetComponent<Image>().sprite = trashSprite;
 
                 trash.SetSiblingIndex(0);
                 trash.gameObject.name = "Trash";
 
+                // Add trash ui button
                 Button button = trash.gameObject.AddComponent<Button>();
-
                 button.onClick.AddListener(new UnityAction(TrashItems.TrashItem));
 
+                // Add border background
+                Transform frames = playerInventory.Find("selected_frame");
+                GameObject newFrame = Instantiate(frames.GetChild(0).gameObject, trash);
+                newFrame.GetComponent<Image>().sprite = bgSprite;
+                newFrame.transform.SetAsFirstSibling();
+                newFrame.GetComponent<RectTransform>().sizeDelta = new Vector2(-8, 22);
+                newFrame.GetComponent<RectTransform>().anchoredPosition = new Vector2(6, 7.5f);
+
+                // Add inventory screen tab
+                UIGroupHandler handler = trash.gameObject.AddComponent<UIGroupHandler>();
+                handler.m_groupPriority = 1;
+                handler.m_enableWhenActiveAndGamepad = newFrame;
+                _gui.m_uiGroups = _gui.m_uiGroups.AddToArray(handler);
+
+                trash.gameObject.AddComponent<TrashHandler>();
             }
         }
 
@@ -108,8 +143,6 @@ namespace ValheimMod
         {
             if (_clickedTrash && ___m_dragItem != null && ___m_dragInventory.ContainsItem(___m_dragItem))
             {
-                Log($"Discarding {___m_dragAmount}/{___m_dragItem.m_stack} {___m_dragItem.m_dropPrefab.name}");
-
                 if (___m_dragAmount == ___m_dragItem.m_stack)
                 {
                     Player.m_localPlayer.RemoveFromEquipQueue(___m_dragItem);
@@ -129,14 +162,36 @@ namespace ValheimMod
 
         public static void TrashItem()
         {
+            Log("Trash Items clicked!");
+
             if (_gui == null)
             {
+                LogErr("_gui is null");
                 return;
             }
 
             _clickedTrash = true;
 
             _gui.GetType().GetMethod("UpdateItemDrag", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(_gui, new object[] { });
+        }
+    }
+
+    public class TrashHandler : MonoBehaviour
+    {
+        private UIGroupHandler handler;
+        private void Awake()
+        {
+            handler = this.GetComponent<UIGroupHandler>();
+        }
+
+        private void Update()
+        {
+            if (ZInput.GetButtonDown("JoyButtonA") && handler.IsActive())
+            {
+                TrashItems.TrashItem();
+                // Switch back to inventory iab
+                typeof(InventoryGui).GetMethod("SetActiveGroup", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(InventoryGui.instance, new object[] { 1 });
+            }
         }
     }
 }
