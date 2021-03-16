@@ -1,7 +1,7 @@
 ManifestFileVersion: 0
-CRC: 481463200
+CRC: 2225051162
 AssetBundleManifest:
   AssetBundleInfos:
     Info_0:
-      Name: emotewheel
+      Name: selectionwheel
       Dependencies: {}

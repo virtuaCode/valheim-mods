@@ -9,7 +9,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TrashItems", "TrashItems\Tr
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ModifyDataPerSec", "ModifyDataPerSec\ModifyDataPerSec.csproj", "{A47029F1-B8AC-46E6-99B2-7BD1A0EE2770}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmoteWheel", "EmoteWheel\EmoteWheel.csproj", "{E9BAFF65-3F68-47B6-A976-5912BEB41DFA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmoteWheel", "EmoteWheel\EmoteWheel.csproj", "{E9BAFF65-3F68-47B6-A976-5912BEB41DFA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AutoLoad", "AutoLoad\AutoLoad.csproj", "{55584F18-A9E5-40ED-B0F4-088D9390CC66}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EquipWheel", "EquipWheel\EquipWheel.csproj", "{A2C762A7-6636-4804-8F60-4AF90B2E9915}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +37,14 @@ Global
 		{E9BAFF65-3F68-47B6-A976-5912BEB41DFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E9BAFF65-3F68-47B6-A976-5912BEB41DFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E9BAFF65-3F68-47B6-A976-5912BEB41DFA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55584F18-A9E5-40ED-B0F4-088D9390CC66}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55584F18-A9E5-40ED-B0F4-088D9390CC66}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55584F18-A9E5-40ED-B0F4-088D9390CC66}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55584F18-A9E5-40ED-B0F4-088D9390CC66}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2C762A7-6636-4804-8F60-4AF90B2E9915}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2C762A7-6636-4804-8F60-4AF90B2E9915}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2C762A7-6636-4804-8F60-4AF90B2E9915}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2C762A7-6636-4804-8F60-4AF90B2E9915}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,31 @@
+ManifestFileVersion: 0
+CRC: 2590833540
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: a1888a90e5204b9c04cc66a7b3d463ff
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 388048ea611963d73a1b84e358364185
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 114
+  Script: {fileID: 11500000, guid: 31a19414c41e5ae4aae2af33fee712f6, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+- Class: 115
+  Script: {instanceID: 0}
+- Class: 222
+  Script: {instanceID: 0}
+- Class: 224
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/SelectionWheel/SelectionWheel.prefab
+Dependencies: []

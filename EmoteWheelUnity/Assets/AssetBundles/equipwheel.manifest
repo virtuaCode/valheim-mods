@@ -1,0 +1,40 @@
+ManifestFileVersion: 0
+CRC: 3226876572
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: d4f9a0a76a54abe644212386ac773eb5
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: f02d30a929ba095b7f22ba8ad5eecdd1
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 114
+  Script: {fileID: 11500000, guid: 31a19414c41e5ae4aae2af33fee712f6, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+- Class: 115
+  Script: {instanceID: 0}
+- Class: 213
+  Script: {instanceID: 0}
+- Class: 222
+  Script: {instanceID: 0}
+- Class: 224
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/EquipWheel/equip_border.png
+- Assets/EquipWheel/EquipWheel.prefab
+- Assets/EquipWheel/Circle1.png
+- Assets/EquipWheel/circle.png
+- Assets/EquipWheel/Triangle.png
+- Assets/EquipWheel/equip_bg.png
+Dependencies: []
