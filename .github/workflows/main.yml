@@ -1,8 +1,9 @@
 name: Publish
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: 
+      - 'v*'
     
 jobs:
   publish:
@@ -22,8 +23,8 @@ jobs:
       - name: Get the Release version tag and mod name
         id: vars
         run: |
-          echo ::set-output name=tag::$(echo ${GITHUB_REF:10} | cut -d'-' -f 1 | cat)
-          echo ::set-output name=mod::$(echo ${GITHUB_REF:10} | cut -d'-' -f 2 | cat)
+          echo ::set-output name=tag::$(echo ${GITHUB_REF:11} | cut -d'-' -f 1 | cat)
+          echo ::set-output name=mod::$(echo ${GITHUB_REF:11} | cut -d'-' -f 2 | cat)
         
       - name: Update const string BepinEx version field
         run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' ${{steps.vars.outputs.mod}}/${{steps.vars.outputs.mod}}.cs
@@ -50,18 +51,50 @@ jobs:
       - uses: papeloto/action-zip@v1
         with:
           files: ${{steps.vars.outputs.mod}}/${{steps.vars.outputs.mod}}.dll
-          dest: ${{steps.vars.outputs.mod}}_nexus.zip
+          dest: ${{steps.vars.outputs.mod}}_nexusmods.zip
 
-      - uses: actions/upload-artifact@v2
+      - name: Change Log
+        id: changelog
+        run: |
+          git fetch --tags --force # Retrieve annotated tags. THIS TRICK REALLY HELPS
+          CHANGELOG=$(git for-each-ref $GITHUB_REF --format='%(contents:subject)')
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
-          path: ${{steps.vars.outputs.mod}}.zip
-          if-no-files-found: error    
+          body: |
+            Change Log
+            ${{ env.CHANGELOG }}
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{steps.vars.outputs.mod}} ${{steps.vars.outputs.tag}}
+          draft: false
+          prerelease: false
+      
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+          asset_path: ./${{steps.vars.outputs.mod}}.zip
+          asset_name: ${{steps.vars.outputs.mod}}_thunderstore.zip
+          asset_content_type: application/zip
         if: steps.check_files.outputs.exists == 'true'
 
-      - uses: actions/upload-artifact@v2
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          path: ${{steps.vars.outputs.mod}}_nexus.zip
-          if-no-files-found: error
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+          asset_path: ./${{steps.vars.outputs.mod}}_nexusmods.zip
+          asset_name: ${{steps.vars.outputs.mod}}_nexusmods.zip
+          asset_content_type: application/zip
 
       #- name: Upload
       #  run: |
