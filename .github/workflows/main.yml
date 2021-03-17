@@ -43,21 +43,23 @@ jobs:
       # Package for Thunderstore
       - uses: papeloto/action-zip@v1
         with:
-          files: ${{steps.vars.outputs.mod}}/${{steps.vars.outputs.mod}}.dll ${{steps.vars.outputs.mod}}/icon.png ${{steps.vars.outputs.mod}}/manifest.json ${{steps.vars.outputs.mod}}/README.md
+          files: ${{steps.vars.outputs.mod}}.dll ${{steps.vars.outputs.mod}}/icon.png ${{steps.vars.outputs.mod}}/manifest.json ${{steps.vars.outputs.mod}}/README.md
           dest: ${{steps.vars.outputs.mod}}.zip
         if: steps.check_files.outputs.exists == 'true'
 
       # Package for Nexus Mods
       - uses: papeloto/action-zip@v1
         with:
-          files: ${{steps.vars.outputs.mod}}/${{steps.vars.outputs.mod}}.dll
+          files: ${{steps.vars.outputs.mod}}.dll
           dest: ${{steps.vars.outputs.mod}}_nexusmods.zip
 
       - name: Change Log
         id: changelog
         run: |
           git fetch --tags --force # Retrieve annotated tags. THIS TRICK REALLY HELPS
-          CHANGELOG=$(git tag -l $GITHUB_REF --format='%(contents:body)')
+          echo 'CHANGELOG<<EOF' >> $GITHUB_ENV
+          git tag -l $GITHUB_REF --format='%(contents:body)' >> $GITHUB_ENV
+          echo 'EOF. >> $GITHUB_ENV
 
       - name: Create Release
         id: create_release
