@@ -54,13 +54,13 @@ jobs:
 
       - uses: actions/upload-artifact@v2
         with:
-          name: ${{steps.vars.outputs.mod}}.zip
+          path: ${{steps.vars.outputs.mod}}.zip
           if-no-files-found: error    
         if: steps.check_files.outputs.exists == 'true'
 
       - uses: actions/upload-artifact@v2
         with:
-          name: ${{steps.vars.outputs.mod}}_nexus.zip
+          path: ${{steps.vars.outputs.mod}}_nexus.zip
           if-no-files-found: error
 
       #- name: Upload
