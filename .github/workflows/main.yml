@@ -74,7 +74,7 @@ jobs:
           prerelease: false
       
       - name: Upload Release Asset
-        id: upload-release-asset 
+        id: upload-thunderstore-asset 
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -86,7 +86,7 @@ jobs:
         if: steps.check_files.outputs.exists == 'true'
 
       - name: Upload Release Asset
-        id: upload-release-asset 
+        id: upload-nexusmod-asset 
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
