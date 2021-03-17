@@ -1,0 +1,67 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+    
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-dotnet@v1
+      
+      - name: Install mono and xbuild
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git mono-complete mono-xbuild nuget
+      
+      - name: Install NexusUploader
+        run: dotnet tool install -g NexusUploader
+        
+      - name: Get the Release version tag
+        id: vars
+        run: echo ::set-output name=tag::$(echo ${GITHUB_REF:10})
+        
+      - name: Extract mod name from annotation
+        id: mod
+        run: |
+          git fetch --tags --force
+          echo ::set-output name=mod::$(git for-each-ref $GITHUB_REF --format='%(contents:subject)')
+
+      - name: Update const string BepinEx version field
+        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' ${{steps.mod.outputs.mod}}/${{steps.mod.outputs.mod}}.cs
+
+      - name: Check file existence
+        id: check_files
+        run: echo ::set-output name=exists::$((test -f ${{steps.mod.outputs.mod}}/manifest.json && echo true) || echo false)
+
+      - name: Update manifest/json version field
+        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' ${{steps.mod.outputs.mod}}/manifest.json
+        if: steps.check_files.outputs.exists == 'true'
+        
+      - name: Build and Create the package
+        run: xbuild ValheimMod.sln /t:${{steps.mod.outputs.mod}} /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
+      
+      # Package for Thunderstore
+      - uses: papeloto/action-zip@v1
+        with:
+          files: ${{steps.mod.outputs.mod}}/${{steps.mod.outputs.mod}}.dll ${{steps.mod.outputs.mod}}/icon.png ${{steps.mod.outputs.mod}}/manifest.json ${{steps.mod.outputs.mod}}/README.md
+          dest: ${{steps.mod.outputs.mod}}.zip
+        if: steps.check_files.outputs.exists == 'true'
+
+      # Package for Nexus Mods
+      - uses: papeloto/action-zip@v1
+        with:
+          files: ${{steps.mod.outputs.mod}}/${{steps.mod.outputs.mod}}.dll
+          dest: ${{steps.mod.outputs.mod}}_nexus.zip
+
+      #- name: Upload
+      #  run: |
+      #    unex upload 504 ValheimLib_release.zip -v ${{ steps.vars.outputs.tag }}
+      #  env:
+      #    UNEX_APIKEY: ${{ secrets.NEXUS_API_KEY }}
+      #    UNEX_COOKIES: ${{ secrets.NEXUS_COOKIES }}
+      #    UNEX_DEBUG: true
+      #    UNEX_FILENAME: ValheimLib
+      #    UNEX_GAME: valheim
