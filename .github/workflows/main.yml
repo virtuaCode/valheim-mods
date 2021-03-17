@@ -57,7 +57,7 @@ jobs:
         id: changelog
         run: |
           git fetch --tags --force # Retrieve annotated tags. THIS TRICK REALLY HELPS
-          CHANGELOG=$(git for-each-ref $GITHUB_REF --format='%(contents:subject)')
+          CHANGELOG=$(git tag -l $GITHUB_REF --format='%(contents:body)')
 
       - name: Create Release
         id: create_release
