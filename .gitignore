@@ -3,7 +3,7 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudio
 
 # DLL Libraries
-Libraries/
+#Libraries/
 
 ### VisualStudio ###
 ## Ignore Visual Studio temporary files, build results, and
