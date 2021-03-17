@@ -52,6 +52,17 @@ jobs:
           files: ${{steps.vars.outputs.mod}}/${{steps.vars.outputs.mod}}.dll
           dest: ${{steps.vars.outputs.mod}}_nexus.zip
 
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{steps.vars.outputs.mod}}.zip
+          if-no-files-found: error    
+        if: steps.check_files.outputs.exists == 'true'
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{steps.vars.outputs.mod}}_nexus.zip
+          if-no-files-found: error
+
       #- name: Upload
       #  run: |
       #    unex upload 504 ValheimLib_release.zip -v ${{ steps.vars.outputs.tag }}
