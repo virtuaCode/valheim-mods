@@ -6,7 +6,6 @@ using UnityEngine.UI;
 using UnityEngine.Events;
 using System.Reflection;
 using System.IO;
-using System;
 
 namespace ValheimMod
 {

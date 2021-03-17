@@ -1,7 +1,5 @@
 ﻿using BepInEx;
 using HarmonyLib;
-using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace AutoLoad
@@ -14,8 +12,6 @@ namespace AutoLoad
         {
             Harmony.CreateAndPatchAll(typeof(AutoLoad));
         }
-
-        //PlayerPrefs.SetString("world", this.m_world.m_name);
 
         [HarmonyPatch(typeof(FejdStartup), "Start")]
         [HarmonyPostfix]

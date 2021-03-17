@@ -1,39 +1,62 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Microsoft.NET.Sdk" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-
-	<PropertyGroup>
-		<TargetFramework>net461</TargetFramework>
-		<Platforms>AnyCPU;x86</Platforms>
-	</PropertyGroup>
-
-	<ItemGroup>
-		<Reference Include="0Harmony20">
-		  <HintPath>..\Libraries\0Harmony20.dll</HintPath>
-		  <Private>false</Private>
-		</Reference>
-		<Reference Include="assembly_valheim">
-			<HintPath>..\Libraries\assembly_valheim.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="BepInEx">
-			<HintPath>..\Libraries\BepInEx.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="UnityEngine">
-			<HintPath>..\Libraries\UnityEngine.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="System.Core">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="System">
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="UnityEngine.CoreModule">
-		  <HintPath>..\Libraries\UnityEngine.CoreModule.dll</HintPath>
-		  <Private>false</Private>
-		</Reference>
-	</ItemGroup>
-
-
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{07308CED-1348-421D-9CB1-7B909DFAF529}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ModifyDataPerSec</RootNamespace>
+    <AssemblyName>ModifyDataPerSec</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="0Harmony20">
+      <HintPath>..\Libraries\0Harmony20.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_valheim">
+      <HintPath>..\Libraries\assembly_valheim.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\Libraries\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\Libraries\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\Libraries\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ModifyDataPerSec.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
