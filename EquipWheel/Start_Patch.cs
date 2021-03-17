@@ -9,7 +9,7 @@ namespace EquipWheel
             public static void Postfix(HotkeyBar __instance)
             {
                 if (EquipWheel.HideHotkeyBar.Value)
-                    __instance.gameObject.SetActive(true);
+                    __instance.gameObject.SetActive(false);
             }
         }
 }

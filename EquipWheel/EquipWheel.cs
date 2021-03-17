@@ -127,7 +127,7 @@ namespace EquipWheel
                 if (hotKeyBar == null)
                     return;
 
-                hotKeyBar.gameObject.SetActive(EquipWheel.HideHotkeyBar.Value);
+                hotKeyBar.gameObject.SetActive(!EquipWheel.HideHotkeyBar.Value);
             };
         }
 
@@ -149,7 +149,7 @@ namespace EquipWheel
             if (hotKeyBar == null)
                 return;
 
-            hotKeyBar.gameObject.SetActive(EquipWheel.HideHotkeyBar.Value);
+            hotKeyBar.gameObject.SetActive(!EquipWheel.HideHotkeyBar.Value);
         }
 
         private void LoadAssets()
