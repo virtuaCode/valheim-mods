@@ -12,7 +12,7 @@ using System.Collections;
 
 namespace EmoteWheel
 {
-    [BepInPlugin("virtuacode.valheim.emotewheel", "Emote Wheel Mod", "1.2.1")]
+    [BepInPlugin("virtuacode.valheim.emotewheel", "Emote Wheel Mod", "0.0.1")]
     public class EmoteWheel : BaseUnityPlugin
     {
         private Harmony harmony;

@@ -13,7 +13,7 @@ using UnityEngine.UI;
 
 namespace EquipWheel
 {
-    [BepInPlugin("virtuacode.valheim.equipwheel", "Equip Wheel Mod", "1.0.2")]
+    [BepInPlugin("virtuacode.valheim.equipwheel", "Equip Wheel Mod", "0.0.1")]
     public class EquipWheel : BaseUnityPlugin
     {
         private Harmony harmony;

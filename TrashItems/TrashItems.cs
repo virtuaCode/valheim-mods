@@ -10,7 +10,7 @@ using System;
 
 namespace ValheimMod
 {
-    [BepInPlugin("virtuacode.valheim.trashitems", "Trash Items Mod", "1.1.0")]
+    [BepInPlugin("virtuacode.valheim.trashitems", "Trash Items Mod", "0.0.1")]
 
     class TrashItems : BaseUnityPlugin
     {

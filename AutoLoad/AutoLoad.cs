@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace AutoLoad
 {
-    [BepInPlugin("virtuacode.valheim.autoload", "Auto Load Mod", "1.0.0")]
+    [BepInPlugin("virtuacode.valheim.autoload", "Auto Load Mod", "0.0.1")]
 
     class AutoLoad : BaseUnityPlugin
     {

@@ -8,7 +8,7 @@ using BepInEx.Configuration;
 
 namespace ValheimMod
 {
-    [BepInPlugin("virtuacode.valheim.easyharvest", "Easy Harvest Mod", "1.0.0")]
+    [BepInPlugin("virtuacode.valheim.easyharvest", "Easy Harvest Mod", "0.0.1")]
 
     class EasyHarvest : BaseUnityPlugin
     {

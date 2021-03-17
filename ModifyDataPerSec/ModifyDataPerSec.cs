@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace ModifyDataPerSec
 {
-    [BepInPlugin("virtuacode.valheim.modifydatapersec", "Modify Data Per Sec Mod", "1.0.0")]
+    [BepInPlugin("virtuacode.valheim.modifydatapersec", "Modify Data Per Sec Mod", "0.0.1")]
 
     public class ModifyDataPerSec : BaseUnityPlugin
     {
