@@ -13,7 +13,7 @@ using UnityEngine.UI;
 
 namespace EquipWheel
 {
-    [BepInPlugin("virtuacode.valheim.equipwheel", "Equip Wheel Mod", "1.0.0")]
+    [BepInPlugin("virtuacode.valheim.equipwheel", "Equip Wheel Mod", "1.0.2")]
     public class EquipWheel : BaseUnityPlugin
     {
         private Harmony harmony;
@@ -116,6 +116,7 @@ namespace EquipWheel
             go.SetActive(false);
 
             visible = false;
+            assets.Unload(false);
         }
 
         void Start()
@@ -141,17 +142,12 @@ namespace EquipWheel
             }
         }
 
-        void OnDestroy()
-        {
-            assets.Unload(true);
-        }
-
         private bool TryEquipWithShield()
         {
             var localPlayer = Player.m_localPlayer;
-            var equipShield = localPlayer.GetLeftItem() == null && ui.CurrentItem.m_shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon && (localPlayer.GetRightItem() == null || ui.CurrentItem != localPlayer.GetRightItem());
-
             localPlayer.UseItem(null, ui.CurrentItem, false);
+
+            var equipShield = localPlayer.IsItemQueued(ui.CurrentItem) && ui.CurrentItem.m_shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon;
 
             if (equipShield)
             {
@@ -420,7 +416,7 @@ namespace EquipWheel
             var images = cursor.GetComponentsInChildren<Image>(true);
             foreach (var image in images)
             {
-                image.color = EquipWheel.GetHighlightColor;
+                image.color = new Color(0, 0, 0, 0.5f);
 
                 if (image.gameObject.name == "Image")
                 {

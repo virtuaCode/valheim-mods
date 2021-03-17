@@ -288,7 +288,6 @@ GameObject:
   - component: {fileID: 1465527818}
   - component: {fileID: 1465527817}
   - component: {fileID: 1465527816}
-  - component: {fileID: 1465527820}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -376,18 +375,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
---- !u!114 &1465527820
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1465527815}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 00b04abeda400004693a3acd98d96e56, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1001 &8404039401645690734
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -399,6 +386,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: SelectionWheel
+      objectReference: {fileID: 0}
+    - target: {fileID: 4964436129185511053, guid: f5d579d07ab01a542b7eaee2dd2168fa,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8404039401304939145, guid: f5d579d07ab01a542b7eaee2dd2168fa,
         type: 3}

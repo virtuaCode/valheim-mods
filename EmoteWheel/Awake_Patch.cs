@@ -13,9 +13,9 @@ namespace EmoteWheel
 
             GameObject g = new GameObject("EmoteGui");
             g.AddComponent<EmoteGui>();
-            g.transform.parent = Menu.instance.transform.parent;
+            g.transform.SetParent(Menu.instance.transform.parent, false);
 
-            Debug.Log("[EmoteWheel] Patch Menu!");
+            EmoteWheel.Log("Spawned EmoteGui!");
         }
     }
 }

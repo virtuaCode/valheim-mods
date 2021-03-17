@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net461</TargetFramework>
@@ -49,6 +49,10 @@
 		  <HintPath>..\Libraries\UnityEngine.InputLegacyModule.dll</HintPath>
 		  <Private>false</Private>
 		</Reference>
+		<Reference Include="UnityEngine.TextRenderingModule">
+		  <HintPath>..\Libraries\UnityEngine.TextRenderingModule.dll</HintPath>
+		  <Private>false</Private>
+		</Reference>
 		<Reference Include="UnityEngine.UI">
 		  <HintPath>..\Libraries\UnityEngine.UI.dll</HintPath>
 		  <Private>false</Private>
@@ -71,10 +75,10 @@
 		<Copy SourceFiles="@(_CopyItems)" DestinationFolder="$(PluginsPath)" ContinueOnError="true" />
 	</Target>
 	<ItemGroup>
-	  <None Remove="res\emotewheel" />
+	  <None Remove="res\selectionwheel" />
 	</ItemGroup>
 	<ItemGroup>
-	  <EmbeddedResource Include="res\emotewheel" />
+	  <EmbeddedResource Include="res\selectionwheel" />
 	</ItemGroup>
 	<ItemGroup>
 		<Reference Update="System.Data">

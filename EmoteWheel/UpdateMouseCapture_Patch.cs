@@ -10,7 +10,6 @@ namespace EmoteWheel
         [HarmonyTargetMethod]
         public static MethodBase TargetMethod()
         {
-            Debug.Log("Patch UpdateMouseCapture");
             return typeof(GameCamera).GetMethod("UpdateMouseCapture", BindingFlags.NonPublic | BindingFlags.Instance);
         }
 

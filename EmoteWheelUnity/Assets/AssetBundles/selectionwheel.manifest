@@ -1,9 +1,9 @@
 ManifestFileVersion: 0
-CRC: 2590833540
+CRC: 2071874820
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: a1888a90e5204b9c04cc66a7b3d463ff
+    Hash: 89989a80face8f47c2eb4709f7f972c6
   TypeTreeHash:
     serializedVersion: 2
     Hash: 388048ea611963d73a1b84e358364185
@@ -28,4 +28,11 @@ ClassTypes:
 SerializeReferenceClassIdentifiers: []
 Assets:
 - Assets/SelectionWheel/SelectionWheel.prefab
+- Assets/SelectionWheel/OuterCircleMat 1.mat
+- Assets/SelectionWheel/TriangleShader.shader
+- Assets/SelectionWheel/TriangleMat.mat
+- Assets/SelectionWheel/InnerCircleMat.mat
+- Assets/SelectionWheel/HighlightShader.shader
+- Assets/SelectionWheel/HighlightCircle.mat
+- Assets/SelectionWheel/CircleShader.shader
 Dependencies: []

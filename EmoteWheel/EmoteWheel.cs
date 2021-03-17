@@ -6,26 +6,82 @@ using System.Reflection;
 using System.IO;
 using UnityEngine.Rendering;
 using BepInEx.Configuration;
+using BepInEx.Logging;
+using System;
+using System.Collections;
 
 namespace EmoteWheel
 {
-    [BepInPlugin("virtuacode.valheim.emotewheel", "Emote Wheel Mod", "1.1.0")]
+    [BepInPlugin("virtuacode.valheim.emotewheel", "Emote Wheel Mod", "1.2.1")]
     public class EmoteWheel : BaseUnityPlugin
     {
         private Harmony harmony;
         public static ConfigEntry<string> Hotkey;
         public static ConfigEntry<bool> TriggerOnRelease;
         public static ConfigEntry<bool> TriggerOnClick;
+        public static ConfigEntry<Color> HighlightColor;
+        public static ConfigEntry<float> GuiScale;
+
+        public static ManualLogSource MyLogger;
+
+        public static Color GetHighlightColor
+        {
+            get
+            {
+                return HighlightColor.Value;
+            }
+        }
+
+        public static void Log(string msg)
+        {
+            if (MyLogger == null)
+                return;
+
+            MyLogger.LogInfo(msg);
+        }
+
+        public static void LogErr(string msg)
+        {
+            if (MyLogger == null)
+                return;
+
+            MyLogger.LogError(msg);
+        }
+        public static void LogWarn(string msg)
+        {
+            if (MyLogger == null)
+                return;
+
+            MyLogger.LogWarning(msg);
+        }
+
+        public static bool IsDedicated()
+        {
+            var method = typeof(ZNet).GetMethod(nameof(ZNet.IsDedicated), BindingFlags.Public | BindingFlags.Instance);
+            var openDelegate = (Func<ZNet, bool>)Delegate.CreateDelegate
+                (typeof(Func<ZNet, bool>), method);
+            return openDelegate(null);
+        }
 
 
         public void Awake()
         {
+            MyLogger = Logger;
+
+            if (IsDedicated())
+            {
+                LogWarn("Mod not loaded because game instance is a dedicated server.");
+                return;
+            }
+
             Hotkey = Config.Bind("General", "Hotkey", "t", "Hotkey for opening emote wheel menu");
             TriggerOnRelease = Config.Bind("General", "TriggerOnRelease", true, "Releasing the Hotkey will trigger the selected emote");
             TriggerOnClick = Config.Bind("General", "TriggerOnClick", false, "Click with left mouse button will trigger the selected emote");
+            HighlightColor = Config.Bind("Appereance", "HighlightColor", new Color(1, 0.82f, 0), "Color of the highlighted selection");
+            GuiScale = Config.Bind("Appereance", "GuiScale", 0.75f, "Scale factor of the user interface");
 
             harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
-            Logger.LogInfo(typeof(EmoteWheel).Name + " Loaded!");
+            Log(typeof(EmoteWheel).Name + " Loaded!");
         }
 
         void OnDestroy()
@@ -46,19 +102,35 @@ namespace EmoteWheel
         void Awake()
         {
             LoadAssets();
-            GameObject uiPrefab = assets.LoadAsset<GameObject>("assets/emotewheel/emotewheel.prefab");
+            GameObject uiPrefab = assets.LoadAsset<GameObject>("assets/selectionwheel/selectionwheel.prefab");
 
-            var go = Instantiate<GameObject>(uiPrefab, transform);
+            var rect = gameObject.AddComponent<RectTransform>();
 
+            var go = Instantiate<GameObject>(uiPrefab, new Vector3(0, 0, 0), transform.rotation, rect);
             ui = go.AddComponent<EmoteWheelUI>();
 
             go.SetActive(false);
             visible = false;
+
+            assets.Unload(false);
         }
+
+        void Start()
+        {
+            var rect = gameObject.GetComponent<RectTransform>();
+
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.anchorMin = new Vector2(0f, 0f);
+            rect.anchoredPosition = new Vector2(0, 0);
+        }
+
+
         private void LoadAssets()
         {
             Assembly asm = Assembly.GetExecutingAssembly();
-            Stream emotewheel = asm.GetManifestResourceStream("EmoteWheel.res.emotewheel");
+            Stream emotewheel = asm.GetManifestResourceStream("EmoteWheel.res.selectionwheel");
 
             using (MemoryStream mStream = new MemoryStream())
             {
@@ -67,40 +139,46 @@ namespace EmoteWheel
             }
         }
 
-        void OnDestroy()
-        {
-            assets.Unload(true);
-        }
-
         private void Update()
         {
+
+            Player localPlayer = Player.m_localPlayer;
+            if (localPlayer == null || localPlayer.IsDead() || localPlayer.InCutscene() || localPlayer.IsTeleporting())
+            {
+                ui.gameObject.SetActive(false);
+                visible = false;
+                return;
+            }
+
+
+
+            bool canOpenMenu = (!EmoteGui.inventoryVisible) && (Chat.instance == null || !Chat.instance.HasFocus()) && !global::Console.IsVisible() && !Menu.IsVisible() && TextViewer.instance && !TextViewer.instance.IsVisible() && !localPlayer.InCutscene() && !GameCamera.InFreeFly() && !Minimap.IsOpen();
+            if (!canOpenMenu)
+            {
+                ui.gameObject.SetActive(false);
+                visible = false;
+                return;
+            }
+
             if (Input.GetKey(EmoteWheel.Hotkey.Value))
             {
-                Player localPlayer = Player.m_localPlayer;
-                if (localPlayer == null || localPlayer.IsDead() || localPlayer.InCutscene() || localPlayer.IsTeleporting())
-                {
-                    ui.gameObject.SetActive(false);
-                    visible = false;
-                    return;
-                }
-                if ((!EmoteGui.inventoryVisible) && (Chat.instance == null || !Chat.instance.HasFocus()) && !global::Console.IsVisible() && !Menu.IsVisible() && TextViewer.instance && !TextViewer.instance.IsVisible() && !localPlayer.InCutscene() && !GameCamera.InFreeFly() && !Minimap.IsOpen())
-                {
-                    ui.gameObject.SetActive(true);
-                    visible = true;
+                ui.gameObject.SetActive(true);
+                visible = true;
 
-                    if (EmoteWheel.TriggerOnClick.Value && Input.GetMouseButtonDown(0))
+                if (EmoteWheel.TriggerOnClick.Value && Input.GetMouseButtonDown(0))
+                {
+
+                    if (ui.CurrentEmote != null)
                     {
-
-                        if (ui.CurrentEmote != null)
-                        {
-                            PlayEmote(ui.CurrentEmote);
-                        }
-
+                        PlayEmote(ui.CurrentEmote);
                     }
-                    return;
+
                 }
+                return;
+
             }
-            else if (EmoteWheel.TriggerOnRelease.Value && Input.GetKeyUp(EmoteWheel.Hotkey.Value))
+
+            if (EmoteWheel.TriggerOnRelease.Value && Input.GetKeyUp(EmoteWheel.Hotkey.Value))
             {
                 if (ui.CurrentEmote != null)
                 {
@@ -127,7 +205,7 @@ namespace EmoteWheel
                     break;
                 case "sit":
                     if (player.IsSitting())
-                        StopEmote(player); 
+                        StopEmote(player);
                     else
                         player.StartEmote(emote, false);
                     break;
@@ -137,7 +215,7 @@ namespace EmoteWheel
             }
 
             ui.Flash();
-        }  
+        }
         private void StopEmote(Player player)
         {
             typeof(Player).GetMethod("StopEmote", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(player, new object[] { });
@@ -162,8 +240,12 @@ namespace EmoteWheel
 
     public class EmoteWheelUI : MonoBehaviour
     {
+        /* Constants */
+        private static readonly float ANGLE_STEP = 360f / 7f;
+        private static readonly float INNER_DIAMETER = 430f;
+
         [System.Serializable]
-        public class Item
+        private class Item
         {
 
             public string name;
@@ -171,16 +253,16 @@ namespace EmoteWheel
             public string command;
         }
 
-        public GameObject cursor;
-        public GameObject highlight;
-        public GameObject textPrefab;
-        public Item[] items;
-        public Text[] itemTexts;
-        public Color NormalColor = new Color(1, 1, 1, 0.5f);
-        public Color HighlightColor = Color.white;
-        public Color YellowColor = new Color(1, 0.8235295f, 0);
+        private GameObject cursor;
+        private GameObject highlight;
+        private GameObject textPrefab;
+        private Transform itemsRoot;
 
-        private Animator animator;
+        private Item[] items;
+        private Text[] itemTexts;
+
+        private Color NormalColor = new Color(1, 1, 1, 0.5f);
+        private Color HighlightColor = Color.white;
         private int previous = -1;
         public int Current
         {
@@ -189,7 +271,7 @@ namespace EmoteWheel
                 if (MouseInCenter)
                     return -1;
 
-                return Mod((int)(Mathf.Round((Angle) / angleStep)), items.Length);
+                return Mod((int)(Mathf.Round((Angle) / ANGLE_STEP)), items.Length);
             }
         }
 
@@ -208,12 +290,9 @@ namespace EmoteWheel
         {
             get
             {
-                RectTransform rect = cursor.transform.Find("CursorCircle1").GetComponent<RectTransform>();
-
-                float radius = Mathf.Max(rect.rect.width + 10, rect.rect.height + 10) / 2 * GetComponent<Canvas>().scaleFactor;
+                float radius = INNER_DIAMETER / 2 * EmoteWheel.GuiScale.Value;
                 var dir = Input.mousePosition - cursor.transform.position;
                 return dir.magnitude <= radius;
-
             }
         }
 
@@ -226,8 +305,37 @@ namespace EmoteWheel
                 return angle;
             }
         }
+        public IEnumerator FlashCoroutine(float aTime)
+        {
+            var color = EmoteWheel.GetHighlightColor;
 
-        private readonly float angleStep = 360f / 7f;
+            for (float t = 0.0f; t < 1.0f; t += Time.deltaTime / aTime)
+            {
+                highlight.GetComponent<Image>().color = Color.Lerp(Color.white, color, t);
+                yield return null;
+            }
+        }
+
+        public GameObject BuildTextPrefab()
+        {
+            var go = new GameObject();
+            var rect = go.AddComponent<RectTransform>();
+            var text = go.AddComponent<Text>();
+            rect.sizeDelta = new Vector2(200, 100);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector3(0, 300, 0);
+            text.fontSize = 40;
+            text.color = Color.white;
+            var font = Resources.GetBuiltinResource(typeof(Font), "Arial.ttf") as Font;
+            text.font = font;
+            text.fontStyle = UnityEngine.FontStyle.Bold;
+            text.alignByGeometry = true;
+            text.alignment = TextAnchor.MiddleCenter;
+            go.SetActive(false);
+            return go;
+        }
 
         private int Mod(int a, int b)
         {
@@ -236,15 +344,14 @@ namespace EmoteWheel
 
         public void Flash()
         {
-            animator.SetTrigger("Flash");
+            StartCoroutine(FlashCoroutine(0.4f));
         }
 
         private void Awake()
         {
-            animator = GetComponent<Animator>();
-
             cursor = transform.Find("Cursor").gameObject;
             highlight = transform.Find("Highlight").gameObject;
+            textPrefab = BuildTextPrefab();
 
             items = new Item[]
             {
@@ -257,36 +364,16 @@ namespace EmoteWheel
                 new Item {name = "Wave", command = "wave"  },
             };
 
-            textPrefab = transform.Find("TextPrefab").gameObject;
-
-            var cc2 = cursor.transform.Find("CursorCircle1/CursorCircle2");
-            if (cc2 == null)
-            {
-                Debug.LogError("cc2 is null");
-                return;
-            }
-
-            var mask = cc2.gameObject.AddComponent<CutoutMask>();
-            try
-            {
-                mask.sprite = EmoteGui.assets.LoadAsset<Sprite>("assets/emotewheel/circle1.png");
-            }
-            catch (System.NullReferenceException)
-            {
-                Debug.LogError("Could not load assets/emotewheel/circle1.png");
-                throw;
-            }
-
-            mask.useSpriteMesh = true;
-            mask.color = YellowColor;
+            itemsRoot = transform.Find("Items");
 
             itemTexts = new Text[items.Length];
 
             for (int i = 0; i < items.Length; i++)
             {
-                var text = Instantiate(textPrefab, transform);
+                var text = Instantiate(textPrefab);
+                text.transform.SetParent(itemsRoot);
 
-                text.transform.RotateAround(transform.position, Vector3.forward, i * angleStep);
+                text.transform.RotateAround(transform.position, Vector3.forward, i * ANGLE_STEP);
                 text.transform.localRotation = Quaternion.AngleAxis(0, Vector3.forward);
                 text.GetComponent<Text>().text = items[i].name;
                 text.SetActive(true);
@@ -296,13 +383,20 @@ namespace EmoteWheel
             }
         }
 
+        void OnEnable()
+        {
+            highlight.GetComponent<Image>().color = EmoteWheel.GetHighlightColor;
+            var scale = EmoteWheel.GuiScale.Value;
+            GetComponent<RectTransform>().localScale = new Vector3(scale, scale, scale);
+        }
+
         void OnDisable()
         {
             highlight.SetActive(false);
             var images = cursor.GetComponentsInChildren<Image>(true);
             foreach (var image in images)
             {
-                image.color = HighlightColor;
+                image.color = new Color(0, 0, 0, 0.5f);
 
                 if (image.gameObject.name == "Image")
                 {
@@ -328,12 +422,11 @@ namespace EmoteWheel
             }
 
             highlight.SetActive(Current > -1);
-            
 
             var images = cursor.GetComponentsInChildren<Image>(true);
             foreach (var image in images)
             {
-                image.color = Current < 0 ? HighlightColor : YellowColor;
+                image.color = Current < 0 ? new Color(0, 0, 0, 0.5f) : EmoteWheel.GetHighlightColor;
 
                 if (image.gameObject.name == "Image")
                 {
@@ -343,10 +436,8 @@ namespace EmoteWheel
 
 
             cursor.transform.rotation = Quaternion.AngleAxis(Angle, Vector3.forward);
-            var highlightAngle = Current * angleStep;
+            var highlightAngle = Current * ANGLE_STEP;
             highlight.transform.rotation = Quaternion.AngleAxis(highlightAngle, Vector3.forward);
         }
     }
-
-
 }
