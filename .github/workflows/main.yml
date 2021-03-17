@@ -59,7 +59,7 @@ jobs:
           git fetch --tags --force # Retrieve annotated tags. THIS TRICK REALLY HELPS
           echo 'CHANGELOG<<EOF' >> $GITHUB_ENV
           git tag -l $GITHUB_REF --format='%(contents:body)' >> $GITHUB_ENV
-          echo 'EOF. >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
 
       - name: Create Release
         id: create_release
