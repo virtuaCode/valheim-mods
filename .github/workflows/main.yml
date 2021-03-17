@@ -19,42 +19,38 @@ jobs:
       - name: Install NexusUploader
         run: dotnet tool install -g NexusUploader
         
-      - name: Get the Release version tag
+      - name: Get the Release version tag and mod name
         id: vars
-        run: echo ::set-output name=tag::$(echo ${GITHUB_REF:10})
-        
-      - name: Extract mod name from annotation
-        id: mod
         run: |
-          git fetch --tags --force
-          echo ::set-output name=mod::$(git for-each-ref $GITHUB_REF --format='%(contents:subject)')
-
+          echo ::set-output name=tag::$(echo ${GITHUB_REF:10} | cut -d'-' -f 1 | cat)
+          echo ::set-output name=mod::$(echo ${GITHUB_REF:10} | cut -d'-' -f 2 | cat)
+        
       - name: Update const string BepinEx version field
-        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' ${{steps.mod.outputs.mod}}/${{steps.mod.outputs.mod}}.cs
+        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' ${{steps.vars.outputs.mod}}/${{steps.vars.outputs.mod}}.cs
 
       - name: Check file existence
         id: check_files
-        run: echo ::set-output name=exists::$((test -f ${{steps.mod.outputs.mod}}/manifest.json && echo true) || echo false)
+        run: echo ::set-output name=exists::$((test -f ${{steps.vars.outputs.mod}}/manifest.json && echo true) || echo false)
 
       - name: Update manifest/json version field
-        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' ${{steps.mod.outputs.mod}}/manifest.json
+        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' ${{steps.vars.outputs.mod}}/manifest.json
         if: steps.check_files.outputs.exists == 'true'
         
       - name: Build and Create the package
-        run: xbuild ValheimMod.sln /t:${{steps.mod.outputs.mod}} /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
+        run: xbuild ValheimMod.sln /t:${{steps.vars.outputs.mod}} /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
       
       # Package for Thunderstore
       - uses: papeloto/action-zip@v1
         with:
-          files: ${{steps.mod.outputs.mod}}/${{steps.mod.outputs.mod}}.dll ${{steps.mod.outputs.mod}}/icon.png ${{steps.mod.outputs.mod}}/manifest.json ${{steps.mod.outputs.mod}}/README.md
-          dest: ${{steps.mod.outputs.mod}}.zip
+          files: ${{steps.vars.outputs.mod}}/${{steps.vars.outputs.mod}}.dll ${{steps.vars.outputs.mod}}/icon.png ${{steps.vars.outputs.mod}}/manifest.json ${{steps.vars.outputs.mod}}/README.md
+          dest: ${{steps.vars.outputs.mod}}.zip
         if: steps.check_files.outputs.exists == 'true'
 
       # Package for Nexus Mods
       - uses: papeloto/action-zip@v1
         with:
-          files: ${{steps.mod.outputs.mod}}/${{steps.mod.outputs.mod}}.dll
-          dest: ${{steps.mod.outputs.mod}}_nexus.zip
+          files: ${{steps.vars.outputs.mod}}/${{steps.vars.outputs.mod}}.dll
+          dest: ${{steps.vars.outputs.mod}}_nexus.zip
 
       #- name: Upload
       #  run: |
