@@ -85,6 +85,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Awake_Patch.cs" />
+    <Compile Include="Start_Patch.cs" />
     <Compile Include="EquipWheel.cs" />
     <Compile Include="IsVisible_Patch.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

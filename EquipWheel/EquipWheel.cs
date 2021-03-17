@@ -23,6 +23,8 @@ namespace EquipWheel
         public static ConfigEntry<Color> HighlightColor;
         public static ConfigEntry<float> GuiScale;
         public static ConfigEntry<bool> AutoEquipShield;
+        public static ConfigEntry<bool> HideHotkeyBar;
+        public static ConfigEntry<int> InventoryRow;
 
         public static ManualLogSource MyLogger;
 
@@ -37,25 +39,16 @@ namespace EquipWheel
 
         public static void Log(string msg)
         {
-            if (MyLogger == null)
-                return;
-
-            MyLogger.LogInfo(msg);
+            MyLogger?.LogInfo(msg);
         }
 
         public static void LogErr(string msg)
         {
-            if (MyLogger == null)
-                return;
-
-            MyLogger.LogError(msg);
+            MyLogger?.LogError(msg);
         }
         public static void LogWarn(string msg)
         {
-            if (MyLogger == null)
-                return;
-
-            MyLogger.LogWarning(msg);
+            MyLogger?.LogWarning(msg);
         }
 
 
@@ -82,10 +75,13 @@ namespace EquipWheel
             TriggerOnClick = Config.Bind("Input", "TriggerOnClick", false, "Click with left mouse button will equip/use the selected item");
             HighlightColor = Config.Bind("Appereance", "HighlightColor", new Color(0.414f, 0.734f, 1f), "Color of the highlighted selection");
             GuiScale = Config.Bind("Appereance", "GuiScale", 0.75f, "Scale factor of the user interface");
+            HideHotkeyBar = Config.Bind("Appereance", "HideHotkeyBar", false, "Hides the top-left Hotkey Bar");
             AutoEquipShield = Config.Bind("Misc", "AutoEquipShield", true, "Enable auto equip of shield when one-handed weapon was equiped");
+            InventoryRow = Config.Bind("Misc", "InventoryRow", 1, new ConfigDescription("Row of the inventory that should be used for the equip wheel", new AcceptableValueRange<int>(1, 4)));
+
 
             harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
-            Log(typeof(EquipWheel).Name + " Loaded!");
+            Log(nameof(EquipWheel) + " Loaded!");
         }
 
         void OnDestroy()
@@ -103,6 +99,8 @@ namespace EquipWheel
         public static bool visible = false;
         public static bool inventoryVisible = false;
 
+        private HotkeyBar hotKeyBar;
+
 
         void Awake()
         {
@@ -117,6 +115,20 @@ namespace EquipWheel
 
             visible = false;
             assets.Unload(false);
+
+
+            EquipWheel.HideHotkeyBar.SettingChanged += (e, args) =>
+            {
+                if (Hud.instance == null)
+                    return;
+
+                HotkeyBar hotKeyBar = Hud.instance.transform.Find("hudroot/HotKeyBar").GetComponent<HotkeyBar>();
+
+                if (hotKeyBar == null)
+                    return;
+
+                hotKeyBar.gameObject.SetActive(EquipWheel.HideHotkeyBar.Value);
+            };
         }
 
         void Start()
@@ -128,6 +140,16 @@ namespace EquipWheel
             rect.anchorMax = new Vector2(1f, 1f);
             rect.anchorMin = new Vector2(0f, 0f);
             rect.anchoredPosition = new Vector2(0, 0);
+
+            if (Hud.instance == null)
+                return;
+
+            HotkeyBar hotKeyBar = Hud.instance.transform.Find("hudroot/HotKeyBar").GetComponent<HotkeyBar>();
+
+            if (hotKeyBar == null)
+                return;
+
+            hotKeyBar.gameObject.SetActive(EquipWheel.HideHotkeyBar.Value);
         }
 
         private void LoadAssets()
@@ -147,7 +169,9 @@ namespace EquipWheel
             var localPlayer = Player.m_localPlayer;
             localPlayer.UseItem(null, ui.CurrentItem, false);
 
-            var equipShield = localPlayer.IsItemQueued(ui.CurrentItem) && ui.CurrentItem.m_shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon;
+            var shieldEquipped = (localPlayer.GetLeftItem() != null &&
+                                  localPlayer.GetLeftItem().m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield);
+            var equipShield = !shieldEquipped && localPlayer.IsItemQueued(ui.CurrentItem) && ui.CurrentItem.m_shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon;
 
             if (equipShield)
             {
@@ -180,7 +204,10 @@ namespace EquipWheel
                 return;
             }
 
-            bool canOpenMenu = (!EquipGui.inventoryVisible) && (Chat.instance == null || !Chat.instance.HasFocus()) && !global::Console.IsVisible() && !Menu.IsVisible() && TextViewer.instance && !TextViewer.instance.IsVisible() && !localPlayer.InCutscene() && !GameCamera.InFreeFly() && !Minimap.IsOpen();
+            bool canOpenMenu = (!EquipGui.inventoryVisible) && (Chat.instance == null || !Chat.instance.HasFocus()) &&
+                               !global::Console.IsVisible() && !Menu.IsVisible() && TextViewer.instance != null &&
+                               !TextViewer.instance.IsVisible() && !localPlayer.InCutscene() &&
+                               !GameCamera.InFreeFly() && !Minimap.IsOpen();
 
             if (!canOpenMenu)
             {
@@ -331,7 +358,8 @@ namespace EquipWheel
             cursor = transform.Find("Cursor").gameObject;
             highlight = transform.Find("Highlight").gameObject;
 
-            hotKeyBar = Hud.instance.transform.Find("hudroot/HotKeyBar").GetComponent<HotkeyBar>();
+            hotKeyBar = Hud.instance.transform.Find("hudroot/HotKeyBar").gameObject.GetComponent<HotkeyBar>();
+            
             m_elementPrefab = hotKeyBar.m_elementPrefab;
 
             itemsRoot = transform.Find("Items");
@@ -371,7 +399,7 @@ namespace EquipWheel
             for (int index = 0; index < 8; index++)
             {
                 items[index] = null;
-                var item = inventory.GetItemAt(index, 0);
+                var item = inventory.GetItemAt(index, EquipWheel.InventoryRow.Value - 1);
 
                 if (item != null)
                     items[index] = item;
@@ -394,11 +422,12 @@ namespace EquipWheel
             for (int index = 0; index < 8; index++)
             {
                 items[index] = null;
-                var item = inventory.GetItemAt(index, 0);
+                var item = inventory.GetItemAt(index, EquipWheel.InventoryRow.Value - 1);
 
                 if (item != null)
                     items[index] = item;
             }
+
 
             highlight.GetComponent<Image>().color = EquipWheel.GetHighlightColor;
 
@@ -510,6 +539,12 @@ namespace EquipWheel
                     elementData3.m_equiped = elementData3.m_go.transform.Find("equiped").gameObject;
                     elementData3.m_queued = elementData3.m_go.transform.Find("queued").gameObject;
                     elementData3.m_selection = elementData3.m_go.transform.Find("selected").gameObject;
+
+                    if (EquipWheel.InventoryRow.Value > 1)
+                    {
+                        elementData3.m_go.transform.Find("binding").GetComponent<Text>().enabled = false;
+                    }
+
                     this.m_elements.Add(elementData3);
                 }
             }
