@@ -1,8 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 	<PropertyGroup>
 		<TargetFramework>net461</TargetFramework>
-		<Platforms>AnyCPU;x86</Platforms>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -11,8 +10,8 @@
 			<Private>false</Private>
 		</Reference>
 		<Reference Include="assembly_guiutils">
-		  <HintPath>..\Libraries\assembly_guiutils.dll</HintPath>
-		  <Private>false</Private>
+			<HintPath>..\Libraries\assembly_guiutils.dll</HintPath>
+			<Private>false</Private>
 		</Reference>
 		<Reference Include="assembly_utils">
 			<HintPath>..\Libraries\assembly_utils.dll</HintPath>
@@ -41,28 +40,28 @@
 			<Private>false</Private>
 		</Reference>
 		<Reference Include="UnityEngine.ImageConversionModule">
-		  <HintPath>..\Libraries\UnityEngine.ImageConversionModule.dll</HintPath>
-		  <Private>false</Private>
+			<HintPath>..\Libraries\UnityEngine.ImageConversionModule.dll</HintPath>
+			<Private>false</Private>
 		</Reference>
 		<Reference Include="UnityEngine.PhysicsModule">
 			<HintPath>..\Libraries\UnityEngine.PhysicsModule.dll</HintPath>
 			<Private>false</Private>
 		</Reference>
 		<Reference Include="UnityEngine.UI">
-		  <HintPath>..\Libraries\UnityEngine.UI.dll</HintPath>
-		  <Private>false</Private>
+			<HintPath>..\Libraries\UnityEngine.UI.dll</HintPath>
+			<Private>false</Private>
 		</Reference>
 		<Reference Include="UnityEngine.UIModule">
-		  <HintPath>..\Libraries\UnityEngine.UIModule.dll</HintPath>
-		  <Private>false</Private>
+			<HintPath>..\Libraries\UnityEngine.UIModule.dll</HintPath>
+			<Private>false</Private>
 		</Reference>
 	</ItemGroup>
 	<ItemGroup>
-	  <None Remove="res\trash.png" />
-	  <None Remove="res\trashmask.png" />
+		<None Remove="res\trash.png" />
+		<None Remove="res\trashmask.png" />
 	</ItemGroup>
 	<ItemGroup>
-	  <EmbeddedResource Include="res\trash.png" />
-	  <EmbeddedResource Include="res\trashmask.png" />
+		<EmbeddedResource Include="res\trash.png" />
+		<EmbeddedResource Include="res\trashmask.png" />
 	</ItemGroup>
 </Project>
