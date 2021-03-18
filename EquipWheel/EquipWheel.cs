@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
-using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 namespace EquipWheel
@@ -20,6 +19,7 @@ namespace EquipWheel
         public static ConfigEntry<string> Hotkey;
         public static ConfigEntry<bool> TriggerOnRelease;
         public static ConfigEntry<bool> TriggerOnClick;
+        public static ConfigEntry<int> IgnoreJoyStickDuration;
         public static ConfigEntry<Color> HighlightColor;
         public static ConfigEntry<float> GuiScale;
         public static ConfigEntry<bool> AutoEquipShield;
@@ -36,6 +36,8 @@ namespace EquipWheel
                 return HighlightColor.Value;
             }
         }
+
+        public static float JoyStickIgnoreTime = 0;
 
         public static void Log(string msg)
         {
@@ -73,11 +75,14 @@ namespace EquipWheel
             Hotkey = Config.Bind("Input", "Hotkey", "g", "Hotkey for opening equip wheel menu");
             TriggerOnRelease = Config.Bind("Input", "TriggerOnRelease", true, "Releasing the Hotkey will equip/use the selected item");
             TriggerOnClick = Config.Bind("Input", "TriggerOnClick", false, "Click with left mouse button will equip/use the selected item");
-            HighlightColor = Config.Bind("Appereance", "HighlightColor", new Color(0.414f, 0.734f, 1f), "Color of the highlighted selection");
+            IgnoreJoyStickDuration = Config.Bind("Input", "IgnoreJoyStickDuration", 300, new ConfigDescription("Duration in milliseconds for ignoring left joystick input after button release", new AcceptableValueRange<int>(0, 2000)));
+            HighlightColor = Config.Bind("Appereance", "HighlightColor", new Color(0.414f, 0.734f, 1f),
+                "Color of the highlighted selection");
             GuiScale = Config.Bind("Appereance", "GuiScale", 0.75f, "Scale factor of the user interface");
             HideHotkeyBar = Config.Bind("Appereance", "HideHotkeyBar", false, "Hides the top-left Hotkey Bar");
             AutoEquipShield = Config.Bind("Misc", "AutoEquipShield", true, "Enable auto equip of shield when one-handed weapon was equiped");
             InventoryRow = Config.Bind("Misc", "InventoryRow", 1, new ConfigDescription("Row of the inventory that should be used for the equip wheel", new AcceptableValueRange<int>(1, 4)));
+
 
 
             harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
@@ -150,6 +155,9 @@ namespace EquipWheel
                 return;
 
             hotKeyBar.gameObject.SetActive(!EquipWheel.HideHotkeyBar.Value);
+
+            // Unbind JoySit
+            ZInput.instance.Setbutton("JoySit", KeyCode.None);
         }
 
         private void LoadAssets()
@@ -171,7 +179,7 @@ namespace EquipWheel
 
             var shieldEquipped = (localPlayer.GetLeftItem() != null &&
                                   localPlayer.GetLeftItem().m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield);
-            var equipShield = !shieldEquipped && localPlayer.IsItemQueued(ui.CurrentItem) && ui.CurrentItem.m_shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon;
+            var equipShield = !shieldEquipped && localPlayer.IsItemQueued(ui.CurrentItem) && ui.CurrentItem.m_equiped == false && ui.CurrentItem.m_shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon;
 
             if (equipShield)
             {
@@ -195,6 +203,9 @@ namespace EquipWheel
 
         private void Update()
         {
+            if (EquipWheel.JoyStickIgnoreTime > 0)
+                EquipWheel.JoyStickIgnoreTime -= Time.deltaTime;
+
             Player localPlayer = Player.m_localPlayer;
 
             if (localPlayer == null || localPlayer.IsDead() || localPlayer.InCutscene() || localPlayer.IsTeleporting())
@@ -216,7 +227,7 @@ namespace EquipWheel
                 return;
             }
 
-            if (Input.GetKey(EquipWheel.Hotkey.Value))
+            if (Input.GetKey(EquipWheel.Hotkey.Value) || ZInput.GetButton("JoyButtonX"))
             {
                 ui.gameObject.SetActive(true);
                 visible = true;
@@ -236,7 +247,7 @@ namespace EquipWheel
                 return;
             }
 
-            if (EquipWheel.TriggerOnRelease.Value && Input.GetKeyUp(EquipWheel.Hotkey.Value))
+            if (EquipWheel.TriggerOnRelease.Value && (Input.GetKeyUp(EquipWheel.Hotkey.Value) || ZInput.GetButtonUp("JoyButtonX")))
             {
                 if (ui.CurrentItem != null)
                 {
@@ -245,6 +256,8 @@ namespace EquipWheel
                     else
                         localPlayer.UseItem(null, ui.CurrentItem, false);
                 }
+
+                EquipWheel.JoyStickIgnoreTime = EquipWheel.IgnoreJoyStickDuration.Value / 1000f;
             }
 
             visible = false;
@@ -289,7 +302,7 @@ namespace EquipWheel
         {
             get
             {
-                if (MouseInCenter)
+                if ((!ZInput.IsGamepadActive() && MouseInCenter) || JoyStickInCenter)
                     return -1;
 
                 int index = Mod((int)Mathf.Round((-Angle) / ANGLE_STEP), 8);
@@ -298,6 +311,16 @@ namespace EquipWheel
                     return -1;
 
                 return index;
+            }
+        }
+
+        public bool JoyStickInCenter
+        {
+            get
+            {
+                var x = ZInput.GetJoyLeftStickX();
+                var y = ZInput.GetJoyLeftStickY();
+                return ZInput.IsGamepadActive() && x == 0 && y == 0;
             }
         }
 
@@ -326,6 +349,16 @@ namespace EquipWheel
         {
             get
             {
+                if (ZInput.IsGamepadActive())
+                {
+                    var x = ZInput.GetJoyLeftStickX();
+                    var y = -ZInput.GetJoyLeftStickY();
+
+                    if (x != 0 || y != 0)
+                        return Mathf.Atan2(y, x) * Mathf.Rad2Deg - 90;
+                }
+                
+
                 var dir = Input.mousePosition - cursor.transform.position;
                 var angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg - 90;
                 return angle;
@@ -435,6 +468,8 @@ namespace EquipWheel
 
             GetComponent<RectTransform>().localScale = new Vector3(scale, scale, scale);
 
+            EquipWheel.JoyStickIgnoreTime = 0;
+
             UpdateIcons(Player.m_localPlayer, true);
             Update();
         }
@@ -539,11 +574,14 @@ namespace EquipWheel
                     elementData3.m_equiped = elementData3.m_go.transform.Find("equiped").gameObject;
                     elementData3.m_queued = elementData3.m_go.transform.Find("queued").gameObject;
                     elementData3.m_selection = elementData3.m_go.transform.Find("selected").gameObject;
+                    elementData3.m_selection.SetActive(false);
 
                     if (EquipWheel.InventoryRow.Value > 1)
                     {
                         elementData3.m_go.transform.Find("binding").GetComponent<Text>().enabled = false;
                     }
+
+
 
                     this.m_elements.Add(elementData3);
                 }
@@ -595,7 +633,6 @@ namespace EquipWheel
             for (int k = 0; k < this.m_elements.Count; k++)
             {
                 ElementData elementData6 = this.m_elements[k];
-                elementData6.m_selection.SetActive(flag && k == Current);
                 if (!elementData6.m_used)
                 {
                     elementData6.m_icon.gameObject.SetActive(false);
