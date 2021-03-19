@@ -16,7 +16,7 @@ namespace EquipWheel
     public class EquipWheel : BaseUnityPlugin
     {
         private Harmony harmony;
-        public static ConfigEntry<string> Hotkey;
+        public static ConfigEntry<KeyCode> Hotkey;
         public static ConfigEntry<bool> TriggerOnRelease;
         public static ConfigEntry<bool> TriggerOnClick;
         public static ConfigEntry<int> IgnoreJoyStickDuration;
@@ -25,9 +25,15 @@ namespace EquipWheel
         public static ConfigEntry<bool> AutoEquipShield;
         public static ConfigEntry<bool> HideHotkeyBar;
         public static ConfigEntry<int> InventoryRow;
+        public static ConfigEntry<bool> UseItemTypeMatching;
+        public static ConfigEntry<ItemDrop.ItemData.ItemType> ItemType1;
+        public static ConfigEntry<ItemDrop.ItemData.ItemType> ItemType2;
+        public static ConfigEntry<ItemDrop.ItemData.ItemType> ItemType3;
+        public static ConfigEntry<ItemDrop.ItemData.ItemType> ItemType4;
+        public static ConfigEntry<ItemDrop.ItemData.ItemType> ItemType5;
+        public static ConfigEntry<ItemDrop.ItemData.ItemType> ItemType6;
 
         public static ManualLogSource MyLogger;
-
 
         public static Color GetHighlightColor
         {
@@ -72,7 +78,9 @@ namespace EquipWheel
                 return;
             }
 
-            Hotkey = Config.Bind("Input", "Hotkey", "g", "Hotkey for opening equip wheel menu");
+            Hotkey = Config.Bind("Input", "Hotkey", KeyCode.G,
+                "Hotkey for opening equip wheel menu");
+
             TriggerOnRelease = Config.Bind("Input", "TriggerOnRelease", true, "Releasing the Hotkey will equip/use the selected item");
             TriggerOnClick = Config.Bind("Input", "TriggerOnClick", false, "Click with left mouse button will equip/use the selected item");
             IgnoreJoyStickDuration = Config.Bind("Input", "IgnoreJoyStickDuration", 300, new ConfigDescription("Duration in milliseconds for ignoring left joystick input after button release", new AcceptableValueRange<int>(0, 2000)));
@@ -82,7 +90,20 @@ namespace EquipWheel
             HideHotkeyBar = Config.Bind("Appereance", "HideHotkeyBar", false, "Hides the top-left Hotkey Bar");
             AutoEquipShield = Config.Bind("Misc", "AutoEquipShield", true, "Enable auto equip of shield when one-handed weapon was equiped");
             InventoryRow = Config.Bind("Misc", "InventoryRow", 1, new ConfigDescription("Row of the inventory that should be used for the equip wheel", new AcceptableValueRange<int>(1, 4)));
-
+            UseItemTypeMatching = Config.Bind("Misc", "UseItemTypeMatching", false,
+                "Will scan the whole inventory for items of the specified item types and show them in the equip wheel");
+            ItemType1 = Config.Bind("Misc", "ItemType1", ItemDrop.ItemData.ItemType.None,
+                "Item type used for filtering items");
+            ItemType2 = Config.Bind("Misc", "ItemType2", ItemDrop.ItemData.ItemType.None,
+                "Item type used for filtering items");
+            ItemType3 = Config.Bind("Misc", "ItemType3", ItemDrop.ItemData.ItemType.None,
+                "Item type used for filtering items");
+            ItemType4 = Config.Bind("Misc", "ItemType4", ItemDrop.ItemData.ItemType.None,
+                "Item type used for filtering items");
+            ItemType5 = Config.Bind("Misc", "ItemType5", ItemDrop.ItemData.ItemType.None,
+                "Item type used for filtering items");
+            ItemType6 = Config.Bind("Misc", "ItemType6", ItemDrop.ItemData.ItemType.None,
+                "Item type used for filtering items");
 
 
             harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
@@ -94,7 +115,6 @@ namespace EquipWheel
             harmony?.UnpatchAll();
         }
     }
-
 
     public class EquipGui : MonoBehaviour
     {
@@ -272,7 +292,7 @@ namespace EquipWheel
         public static readonly float ANGLE_STEP = 360f / 8f;
         public static readonly float ITEM_DISTANCE = 295f;
         public static readonly float ITEM_SCALE = 2f;
-        public static readonly float INNER_DIAMETER = 430f;
+        public static readonly float INNER_DIAMETER = 340f;
 
         private GameObject cursor;
         private GameObject highlight;
@@ -339,7 +359,7 @@ namespace EquipWheel
         {
             get
             {
-                float radius = INNER_DIAMETER / 2 * EquipWheel.GuiScale.Value;
+                float radius = INNER_DIAMETER / 2 * gameObject.transform.lossyScale.x;
                 var dir = Input.mousePosition - cursor.transform.position;
                 return dir.magnitude <= radius;
             }
@@ -420,29 +440,13 @@ namespace EquipWheel
             {
                 return;
             }
+            
 
-            if (Player.m_localPlayer == null)
-                return;
-
-            var inventory = Player.m_localPlayer.GetInventory();
-
-            if (inventory == null)
-                return;
-
-            for (int index = 0; index < 8; index++)
-            {
-                items[index] = null;
-                var item = inventory.GetItemAt(index, EquipWheel.InventoryRow.Value - 1);
-
-                if (item != null)
-                    items[index] = item;
-
-            }
-
+            UpdateItems();
             UpdateIcons(Player.m_localPlayer, true);
         }
 
-        void OnEnable()
+        void UpdateItems()
         {
             if (Player.m_localPlayer == null)
                 return;
@@ -452,6 +456,38 @@ namespace EquipWheel
             if (inventory == null)
                 return;
 
+            if (EquipWheel.UseItemTypeMatching.Value)
+            {
+
+
+                var filteredItems = inventory.GetAllItems().FindAll(i =>
+                {
+                    var type = i.m_shared.m_itemType;
+                    return (type == EquipWheel.ItemType1.Value || type == EquipWheel.ItemType2.Value ||
+                            type == EquipWheel.ItemType3.Value || type == EquipWheel.ItemType4.Value ||
+                            type == EquipWheel.ItemType5.Value || type == EquipWheel.ItemType6.Value);
+                });
+
+                var types = new[] { 
+                    EquipWheel.ItemType1.Value, EquipWheel.ItemType2.Value, EquipWheel.ItemType3.Value,
+                    EquipWheel.ItemType4.Value, EquipWheel.ItemType5.Value, EquipWheel.ItemType6.Value
+                };
+
+                filteredItems.Sort((a, b) => Array.IndexOf(types, a.m_shared.m_itemType)
+                    .CompareTo(Array.IndexOf(types, b.m_shared.m_itemType)));
+
+                for (int index = 0; index < 8; index++)
+                {
+                    items[index] = null;
+
+                    if (filteredItems.Count > index)
+                        items[index] = filteredItems[index];
+                }
+
+                return;
+            }
+
+
             for (int index = 0; index < 8; index++)
             {
                 items[index] = null;
@@ -460,8 +496,10 @@ namespace EquipWheel
                 if (item != null)
                     items[index] = item;
             }
+        }
 
-
+        void OnEnable()
+        {
             highlight.GetComponent<Image>().color = EquipWheel.GetHighlightColor;
 
             var scale = EquipWheel.GuiScale.Value;
@@ -470,6 +508,7 @@ namespace EquipWheel
 
             EquipWheel.JoyStickIgnoreTime = 0;
 
+            UpdateItems();
             UpdateIcons(Player.m_localPlayer, true);
             Update();
         }
@@ -576,7 +615,7 @@ namespace EquipWheel
                     elementData3.m_selection = elementData3.m_go.transform.Find("selected").gameObject;
                     elementData3.m_selection.SetActive(false);
 
-                    if (EquipWheel.InventoryRow.Value > 1)
+                    if (EquipWheel.InventoryRow.Value > 1 || EquipWheel.UseItemTypeMatching.Value)
                     {
                         elementData3.m_go.transform.Find("binding").GetComponent<Text>().enabled = false;
                     }
