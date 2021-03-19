@@ -6,27 +6,52 @@ using UnityEngine.UI;
 using UnityEngine.Events;
 using System.Reflection;
 using System.IO;
+using BepInEx.Logging;
 
-namespace ValheimMod
+namespace TrashItems
 {
     [BepInPlugin("virtuacode.valheim.trashitems", "Trash Items Mod", "0.0.1")]
 
     class TrashItems : BaseUnityPlugin
     {
-        public static ConfigEntry<bool> modEnabled;
-        public static ConfigEntry<float> returnResources;
+        public static ConfigEntry<bool> ModEnabled;
+        public static ConfigEntry<bool> ConfirmDialog;
         public static bool _clickedTrash = false;
+        public static bool _confirmed = false;
         public static InventoryGui _gui;
         public static Sprite trashSprite;
         public static Sprite bgSprite;
-     
+        public static GameObject dialog;
+
+        public static ManualLogSource MyLogger;
+
+
+        public static float JoyStickIgnoreTime = 0;
+
+        public static void Log(string msg)
+        {
+            MyLogger?.LogInfo(msg);
+        }
+
+        public static void LogErr(string msg)
+        {
+            MyLogger?.LogError(msg);
+        }
+        public static void LogWarn(string msg)
+        {
+            MyLogger?.LogWarning(msg);
+        }
+
+
+
         private void Awake()
         {
+            MyLogger = Logger;
 
-            modEnabled = Config.Bind<bool>("General", "Enabled", true, "Enable this mod");
-            returnResources = Config.Bind<float>("General", "ReturnResources", 1f, "Fraction of resources to return");
+            ModEnabled = Config.Bind<bool>("General", "Enabled", true, "Enable this mod");
+            ConfirmDialog = Config.Bind<bool>("General", "ConfirmDialog", false, "Show confirm dialog");
 
-            Logger.LogInfo(typeof(TrashItems).Name + " Loaded!");
+            Log(nameof(TrashItems) + " Loaded!");
 
             Assembly asm = Assembly.GetExecutingAssembly();
             Stream trashImg = asm.GetManifestResourceStream("TrashItems.res.trash.png");
@@ -65,16 +90,6 @@ namespace ValheimMod
             }
         }
 
-
-        public static void Log(string msg)
-        {
-            Debug.Log("[" + typeof(TrashItems).Name + "] " + msg);
-        }
-
-        public static void LogErr(string msg)
-        {
-            Debug.LogError("[" + typeof(TrashItems).Name + "] " + msg);
-        }
         [HarmonyPatch(typeof(InventoryGui), "Show")]
         [HarmonyPrefix]
         public static void Show_Prefix(InventoryGui __instance)
@@ -136,12 +151,33 @@ namespace ValheimMod
             }
         }
 
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Hide))]
+        [HarmonyPostfix]
+        public static void Postfix()
+        {
+            OnCancel();
+        }
+
         [HarmonyPostfix]
         [HarmonyPatch(typeof(InventoryGui), "UpdateItemDrag")]
         public static void UpdateItemDrag_Postfix(InventoryGui __instance, ref GameObject ___m_dragGo, ItemDrop.ItemData ___m_dragItem, Inventory ___m_dragInventory, int ___m_dragAmount)
         {
             if (_clickedTrash && ___m_dragItem != null && ___m_dragInventory.ContainsItem(___m_dragItem))
             {
+                if (ConfirmDialog.Value)
+                {
+                    if (_confirmed)
+                    {
+                        _confirmed = false;
+                    }
+                    else
+                    {
+                        ShowConfirmDialog(___m_dragItem, ___m_dragAmount);
+                        _clickedTrash = false;
+                        return;
+                    }
+                }
+
                 if (___m_dragAmount == ___m_dragItem.m_stack)
                 {
                     Player.m_localPlayer.RemoveFromEquipQueue(___m_dragItem);
@@ -150,14 +186,75 @@ namespace ValheimMod
                 }
                 else
                     ___m_dragInventory.RemoveItem(___m_dragItem, ___m_dragAmount);
-                Destroy(___m_dragGo);
-                ___m_dragGo = null;
+
+                __instance.GetType().GetMethod("SetupDragItem", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .Invoke(__instance, new object[] {null, null, 0});
                 __instance.GetType().GetMethod("UpdateCraftingPanel", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(__instance, new object[] { false });
             }
 
             _clickedTrash = false;
         }
 
+        public static void ShowConfirmDialog(ItemDrop.ItemData item, int itemAmount)
+        {
+            if (InventoryGui.instance == null)
+                return;
+
+            if (dialog != null)
+                return;
+
+            dialog = Instantiate(InventoryGui.instance.m_splitPanel.gameObject, InventoryGui.instance.transform);
+
+            var okButton = dialog.transform.Find("win_bkg/Button_ok").GetComponent<Button>();
+            okButton.onClick.RemoveAllListeners();
+            okButton.onClick.AddListener(new UnityAction(OnConfirm));
+            okButton.GetComponentInChildren<Text>().text = "Trash";
+            okButton.GetComponentInChildren<Text>().color = new Color(1, 0.2f, 0.1f);
+
+            var cancelButton = dialog.transform.Find("win_bkg/Button_cancel").GetComponent<Button>();
+            cancelButton.onClick.RemoveAllListeners();
+            cancelButton.onClick.AddListener(new UnityAction(OnCancel));
+
+            dialog.transform.Find("win_bkg/Slider").gameObject.SetActive(false);
+
+            var text = dialog.transform.Find("win_bkg/Text").GetComponent<Text>();
+            text.text = Localization.instance.Localize(item.m_shared.m_name);
+
+            var icon = dialog.transform.Find("win_bkg/Icon_bkg/Icon").GetComponent<Image>();
+            icon.sprite = item.GetIcon();
+
+            var amount = dialog.transform.Find("win_bkg/amount").GetComponent<Text>();
+
+            amount.text = itemAmount + "/" + item.m_shared.m_maxStackSize;
+
+            dialog.gameObject.SetActive(true);
+        }
+
+        public static void OnConfirm()
+        {
+            _confirmed = true;
+            if (dialog != null)
+            {
+                Destroy(dialog);
+                dialog = null;
+            }
+            TrashItem();
+        }
+
+        public static void OnCancel()
+        {
+            _confirmed = false;
+            if (dialog != null)
+            {
+                Destroy(dialog);
+                dialog = null;
+            }
+        }
+
+        public static void OnHide()
+        {
+
+        }
 
         public static void TrashItem()
         {

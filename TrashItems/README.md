@@ -1,6 +1,7 @@
 ## Overview
 
 This mod adds a trash can to your inventory screen where you can drag and drop your unneeded items to destroy them **permanently**.
+Optionally you can enable a confirm dialog that appears before destroying the items.
 
 **Gamepad Support:**<br>
 Select the item in your inventory, go to the Trash tab and then press the 'A' button on your controller to trash the item.
@@ -14,6 +15,9 @@ BepInEx Modloader must be installed. Can be found here:
 To install the mod just move the downloaded TrashItems.dll to the `<valheim-folder>\BepInEx\plugins\` folder.
 
 ## Change Log
+
+- 1.2.0
+    - Add optional confirm dialog (not supported on gamepads)
 
 - 1.1.0
     - Added support for gamepads

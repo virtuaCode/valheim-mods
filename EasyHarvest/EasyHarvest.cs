@@ -1,12 +1,9 @@
 ﻿using UnityEngine;
 using BepInEx;
 using HarmonyLib;
-using System.Collections.Generic;
-using System;
-using System.Linq;
 using BepInEx.Configuration;
 
-namespace ValheimMod
+namespace EasyHarvest
 {
     [BepInPlugin("virtuacode.valheim.easyharvest", "Easy Harvest Mod", "0.0.1")]
 
