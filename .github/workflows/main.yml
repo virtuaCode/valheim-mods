@@ -112,7 +112,7 @@ jobs:
     strategy:
       matrix:
         mod: [EquipWheelTwo, EquipWheelThree, EquipWheelFour]
-      runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
