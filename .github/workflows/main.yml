@@ -150,15 +150,15 @@ jobs:
       - name: Rename bepinex mod name
         run: sed -i 's/"Equip Wheel Mod"/"Equip Wheel Mod (${{matrix.mod}})"/g' EquipWheel/EquipWheel.cs
 
+      - name: Rename root namespace
+        run: sed -i 's/<RootNamespace>EquipWheel<\/RootNamespace>/<RootNamespace>${{matrix.mod}}<\/RootNamespace>/g' EquipWheel/*.csproj
+
+      - name: Rename assembly name
+        run: sed -i 's/<AssemblyName>EquipWheel<\/AssemblyName>/<AssemblyName>${{matrix.mod}}<\/AssemblyName>/g' EquipWheel/*.csproj
+
       - name: Build and Create the package
         run: xbuild ValheimMod.sln /t:EquipWheel /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
       
-      # Package for Nexus Mods
-      - uses: papeloto/action-zip@v1
-        with:
-          files: ${{matrix.mod}}.dll
-          dest: ${{matrix.mod}}.zip
-      
       - uses: actions/upload-artifact@v2
         with:
-          path: ${{matrix.mod}}.zip
+          path: ${{matrix.mod}}.dll
