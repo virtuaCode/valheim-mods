@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 using BepInEx;
 using HarmonyLib;
 using BepInEx.Configuration;
@@ -25,9 +26,6 @@ namespace TrashItems
 
         public static ManualLogSource MyLogger;
 
-
-        public static float JoyStickIgnoreTime = 0;
-
         public static void Log(string msg)
         {
             MyLogger?.LogInfo(msg);
@@ -42,8 +40,6 @@ namespace TrashItems
             MyLogger?.LogWarning(msg);
         }
 
-
-
         private void Awake()
         {
             MyLogger = Logger;
@@ -52,20 +48,7 @@ namespace TrashItems
             ConfirmDialog = Config.Bind<bool>("General", "ConfirmDialog", false, "Show confirm dialog");
 
             Log(nameof(TrashItems) + " Loaded!");
-
-            Assembly asm = Assembly.GetExecutingAssembly();
-            Stream trashImg = asm.GetManifestResourceStream("TrashItems.res.trash.png");
-
-            Texture2D tex = new Texture2D(64, 64, TextureFormat.RGBA32, false, true);
             
-            using (MemoryStream mStream = new MemoryStream())
-            {
-                trashImg.CopyTo(mStream);
-                tex.LoadImage(mStream.ToArray());
-                tex.Apply();
-                trashSprite = Sprite.Create(tex, new Rect(0, 0, 64, 64), new Vector2(32, 32), 100);
-            }
-
             trashSprite = LoadSprite("TrashItems.res.trash.png", new Rect(0, 0, 64, 64), new Vector2(32, 32));
             bgSprite = LoadSprite("TrashItems.res.trashmask.png", new Rect(0, 0, 96, 112), new Vector2(48, 56));
 
@@ -91,24 +74,40 @@ namespace TrashItems
         }
 
         [HarmonyPatch(typeof(InventoryGui), "Show")]
-        [HarmonyPrefix]
-        public static void Show_Prefix(InventoryGui __instance)
+        [HarmonyPostfix]
+        public static void Show_Postfix(InventoryGui __instance)
         {
-            _gui = __instance;
-
-            Transform playerInventory = __instance.m_player.transform;
+            Transform playerInventory = InventoryGui.instance.m_player.transform;
             Transform trash = playerInventory.Find("Trash");
 
-            if (trash == null)
-            {
-                trash = Instantiate(playerInventory.Find("Armor"), playerInventory);
+            if (trash != null)
+                return;
 
-                RectTransform rect = trash.GetComponent<RectTransform>();
+            _gui = InventoryGui.instance;
+
+            trash = Instantiate(playerInventory.Find("Armor"), playerInventory);
+            trash.gameObject.AddComponent<TrashButton>();
+        }
+
+        public class TrashButton : MonoBehaviour
+        {
+            private Canvas canvas;
+            private GraphicRaycaster raycaster;
+            private RectTransform rectTransform;
+            private GameObject buttonGo;
+
+            void Awake()
+            {
+                if (InventoryGui.instance == null)
+                    return;
+
+                var playerInventory = InventoryGui.instance.m_player.transform;
+                RectTransform rect = GetComponent<RectTransform>();
 
                 rect.anchoredPosition -= new Vector2(0, 78);
 
                 // Replace text and color
-                Transform tText = trash.Find("ac_text");
+                Transform tText = transform.Find("ac_text");
                 if (!tText)
                 {
                     LogErr("ac_text not found!");
@@ -119,37 +118,64 @@ namespace TrashItems
 
 
                 // Replace armor with trash icon
-                Transform tArmor = trash.Find("armor_icon");
+                Transform tArmor = transform.Find("armor_icon");
                 if (!tArmor)
                 {
                     LogErr("armor_icon not found!");
                 }
                 tArmor.GetComponent<Image>().sprite = trashSprite;
 
-                trash.SetSiblingIndex(0);
-                trash.gameObject.name = "Trash";
+                transform.SetSiblingIndex(0);
+                transform.gameObject.name = "Trash";
+
+                buttonGo = new GameObject("ButtonCanvas");
+                rectTransform = buttonGo.AddComponent<RectTransform>();
+                rectTransform.transform.SetParent(transform.transform, true);
+                rectTransform.anchoredPosition = Vector2.zero;
+                rectTransform.sizeDelta = new Vector2(70, 74);
+                canvas = buttonGo.AddComponent<Canvas>();
+                raycaster = buttonGo.AddComponent<GraphicRaycaster>(); 
+
 
                 // Add trash ui button
-                Button button = trash.gameObject.AddComponent<Button>();
+                Button button = buttonGo.AddComponent<Button>();
                 button.onClick.AddListener(new UnityAction(TrashItems.TrashItem));
+                var image = buttonGo.AddComponent<Image>();
+                image.color = new Color(0, 0, 0, 0);
 
                 // Add border background
                 Transform frames = playerInventory.Find("selected_frame");
-                GameObject newFrame = Instantiate(frames.GetChild(0).gameObject, trash);
+                GameObject newFrame = Instantiate(frames.GetChild(0).gameObject, transform);
                 newFrame.GetComponent<Image>().sprite = bgSprite;
                 newFrame.transform.SetAsFirstSibling();
                 newFrame.GetComponent<RectTransform>().sizeDelta = new Vector2(-8, 22);
                 newFrame.GetComponent<RectTransform>().anchoredPosition = new Vector2(6, 7.5f);
 
                 // Add inventory screen tab
-                UIGroupHandler handler = trash.gameObject.AddComponent<UIGroupHandler>();
+                UIGroupHandler handler = gameObject.AddComponent<UIGroupHandler>();
                 handler.m_groupPriority = 1;
                 handler.m_enableWhenActiveAndGamepad = newFrame;
                 _gui.m_uiGroups = _gui.m_uiGroups.AddToArray(handler);
 
-                trash.gameObject.AddComponent<TrashHandler>();
+                gameObject.AddComponent<TrashHandler>();
+            }
+
+            void Start()
+            {
+               StartCoroutine(DelayedOverrideSorting());
+            }
+
+            private IEnumerator DelayedOverrideSorting()
+            {
+                yield return null;
+
+                if (canvas == null) yield break;
+
+                canvas.overrideSorting = true;
+                canvas.sortingOrder = 1;
             }
         }
+
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Hide))]
         [HarmonyPostfix]
@@ -249,11 +275,6 @@ namespace TrashItems
                 Destroy(dialog);
                 dialog = null;
             }
-        }
-
-        public static void OnHide()
-        {
-
         }
 
         public static void TrashItem()
