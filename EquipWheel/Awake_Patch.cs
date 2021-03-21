@@ -1,4 +1,5 @@
-﻿using HarmonyLib;
+﻿using System.Reflection;
+using HarmonyLib;
 using UnityEngine;
 
 namespace EquipWheel
@@ -8,10 +9,12 @@ namespace EquipWheel
     {
         public static void Postfix()
         {
-            if (Menu.instance == null || GameObject.Find("EquipGui"))
+            var objectName = "EquipGui (" + Assembly.GetExecutingAssembly().GetName().Name + ")";
+
+            if (Menu.instance == null || GameObject.Find(objectName))
                 return;
 
-            GameObject g = new GameObject("EquipGui");
+            GameObject g = new GameObject(objectName);
             g.AddComponent<EquipGui>();
             g.transform.SetParent(Menu.instance.transform.parent, false);
 

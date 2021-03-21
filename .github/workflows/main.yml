@@ -97,7 +97,6 @@ jobs:
           asset_path: ./${{steps.vars.outputs.mod}}_nexusmods.zip
           asset_name: ${{steps.vars.outputs.mod}}_nexusmods.zip
           asset_content_type: application/zip
-
       #- name: Upload
       #  run: |
       #    unex upload 504 ValheimLib_release.zip -v ${{ steps.vars.outputs.tag }}
@@ -107,3 +106,59 @@ jobs:
       #    UNEX_DEBUG: true
       #    UNEX_FILENAME: ValheimLib
       #    UNEX_GAME: valheim
+
+  variants:
+    if: endsWith(github.ref, 'EquipWheel')
+    strategy:
+      matrix:
+        mod: [EquipWheelTwo, EquipWheelThree, EquipWheelFour]
+      runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-dotnet@v1
+      
+      - name: Install mono and xbuild
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git mono-complete mono-xbuild nuget
+      
+      - name: Get the Release version tag and mod name
+        id: vars
+        run: |
+          echo ::set-output name=tag::$(echo ${GITHUB_REF:11} | cut -d'-' -f 1 | cat)
+          echo ::set-output name=mod::$(echo ${GITHUB_REF:11} | cut -d'-' -f 2 | cat)
+        
+      - name: Update const string BepinEx version field
+        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' EquipWheel/EquipWheel.cs
+        
+      - name: Rename namespaces
+        run: sed -i 's/namespace EquipWheel/namespace ${{matrix.mod}}/g' EquipWheel/*.cs
+      
+      - name: Rename assembly info
+        run: sed -i 's/"EquipWheel"/"${{matrix.mod}}"/g' EquipWheel/Properties/AssemblyInfo.cs
+
+      - name: Change String Case
+        id: lower
+        uses: ASzc/change-string-case-action@v2
+        with:
+          string: ${{matrix.mod}}
+
+      - name: Rename bepinex mod id
+        run: sed -i 's/"virtuacode.valheim.equipwheel"/"virtuacode.valheim.${{steps.lower.outputs.lowercase}}"/g' EquipWheel/EquipWheel.cs
+
+      - name: Rename bepinex mod name
+        run: sed -i 's/"Equip Wheel Mod"/"Equip Wheel Mod (${{matrix.mod}})"/g' EquipWheel/EquipWheel.cs
+
+      - name: Build and Create the package
+        run: xbuild ValheimMod.sln /t:${{matrix.mod}} /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
+      
+      # Package for Nexus Mods
+      - uses: papeloto/action-zip@v1
+        with:
+          files: ${{matrix.mod}}.dll
+          dest: ${{matrix.mod}}.zip
+      
+      - uses: actions/upload-artifact@v2
+        with:
+          path: ${{matrix.mod}}.zip
