@@ -151,7 +151,7 @@ jobs:
         run: sed -i 's/"Equip Wheel Mod"/"Equip Wheel Mod (${{matrix.mod}})"/g' EquipWheel/EquipWheel.cs
 
       - name: Build and Create the package
-        run: xbuild ValheimMod.sln /t:${{matrix.mod}} /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
+        run: xbuild ValheimMod.sln /t:EquipWheel /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
       
       # Package for Nexus Mods
       - uses: papeloto/action-zip@v1
