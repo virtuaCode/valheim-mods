@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
@@ -32,6 +33,8 @@ namespace EquipWheel
         public static ConfigEntry<ItemDrop.ItemData.ItemType> ItemType4;
         public static ConfigEntry<ItemDrop.ItemData.ItemType> ItemType5;
         public static ConfigEntry<ItemDrop.ItemData.ItemType> ItemType6;
+        public static ConfigEntry<string> ItemNames;
+        public static string[] itemNames = new string[] { };
 
         public static ManualLogSource MyLogger;
 
@@ -104,7 +107,13 @@ namespace EquipWheel
                 "Item type used for filtering items");
             ItemType6 = Config.Bind("Misc", "ItemType6", ItemDrop.ItemData.ItemType.None,
                 "Item type used for filtering items");
+            ItemNames = Config.Bind("Misc", "ItemNames", "",
+                "Separated item names used for filtering items");
 
+            ItemNames.SettingChanged += (sender, args) =>
+            {
+                ParseItemNames();
+            };
 
             harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
             Log(nameof(EquipWheel) + " Loaded!");
@@ -113,6 +122,28 @@ namespace EquipWheel
         void OnDestroy()
         {
             harmony?.UnpatchAll();
+        }
+
+        public static void ParseItemNames()
+        {
+            if (ObjectDB.instance == null)
+                return;
+
+            char[] delimiterChars = { ' ', ',', '.', ':', '\t' };
+            var names = ItemNames.Value.Split(delimiterChars, StringSplitOptions.RemoveEmptyEntries);
+            var tokens = new List<string>();
+
+            foreach (var name in names)
+            {
+                var prefab = ObjectDB.instance.GetItemPrefab(name);
+                if (prefab != null)
+                {
+                    var item = prefab.GetComponent<ItemDrop>();
+                    tokens.Add(item.m_itemData.m_shared.m_name);
+                }
+            }
+
+            itemNames = tokens.Distinct().ToArray();
         }
     }
 
@@ -123,8 +154,6 @@ namespace EquipWheel
 
         public static bool visible = false;
         public static bool inventoryVisible = false;
-
-        private HotkeyBar hotKeyBar;
 
 
         void Awake()
@@ -178,6 +207,8 @@ namespace EquipWheel
 
             // Unbind JoySit
             ZInput.instance.Setbutton("JoySit", KeyCode.None);
+
+            EquipWheel.ParseItemNames();
         }
 
         private void LoadAssets()
@@ -221,6 +252,20 @@ namespace EquipWheel
             return false;
         }
 
+        public static bool CanOpenMenu
+        {
+            get
+            {
+                Player localPlayer = Player.m_localPlayer;
+
+                bool canOpenMenu = !(localPlayer == null || localPlayer.IsDead() || localPlayer.InCutscene() || localPlayer.IsTeleporting()) &&
+                                   (!EquipGui.inventoryVisible) && (Chat.instance == null || !Chat.instance.HasFocus()) &&
+                                   !global::Console.IsVisible() && !Menu.IsVisible() && TextViewer.instance != null &&
+                                   !TextViewer.instance.IsVisible() && !GameCamera.InFreeFly() && !Minimap.IsOpen();
+                return canOpenMenu;
+            }
+        }
+
         private void Update()
         {
             if (EquipWheel.JoyStickIgnoreTime > 0)
@@ -228,19 +273,7 @@ namespace EquipWheel
 
             Player localPlayer = Player.m_localPlayer;
 
-            if (localPlayer == null || localPlayer.IsDead() || localPlayer.InCutscene() || localPlayer.IsTeleporting())
-            {
-                ui.gameObject.SetActive(false);
-                visible = false;
-                return;
-            }
-
-            bool canOpenMenu = (!EquipGui.inventoryVisible) && (Chat.instance == null || !Chat.instance.HasFocus()) &&
-                               !global::Console.IsVisible() && !Menu.IsVisible() && TextViewer.instance != null &&
-                               !TextViewer.instance.IsVisible() && !localPlayer.InCutscene() &&
-                               !GameCamera.InFreeFly() && !Minimap.IsOpen();
-
-            if (!canOpenMenu)
+            if (!CanOpenMenu)
             {
                 ui.gameObject.SetActive(false);
                 visible = false;
@@ -458,14 +491,34 @@ namespace EquipWheel
 
             if (EquipWheel.UseItemTypeMatching.Value)
             {
+                var namedItems = new List<ItemDrop.ItemData>();
+                var filteredItems = new List<ItemDrop.ItemData>();
 
-
-                var filteredItems = inventory.GetAllItems().FindAll(i =>
+                foreach (var item in inventory.GetAllItems())
                 {
-                    var type = i.m_shared.m_itemType;
-                    return (type == EquipWheel.ItemType1.Value || type == EquipWheel.ItemType2.Value ||
-                            type == EquipWheel.ItemType3.Value || type == EquipWheel.ItemType4.Value ||
-                            type == EquipWheel.ItemType5.Value || type == EquipWheel.ItemType6.Value);
+
+                    if (Array.Exists(EquipWheel.itemNames, name => item.m_shared.m_name.Equals(name)))
+                    {
+                        namedItems.Add(item);
+                        continue;
+                    }
+
+                    var type = item.m_shared.m_itemType;
+
+                    if ((type == EquipWheel.ItemType1.Value || type == EquipWheel.ItemType2.Value ||
+                         type == EquipWheel.ItemType3.Value || type == EquipWheel.ItemType4.Value ||
+                         type == EquipWheel.ItemType5.Value || type == EquipWheel.ItemType6.Value))
+                    {
+                        filteredItems.Add(item);
+                    }
+                }
+
+                namedItems.Sort((a, b) =>
+                {
+                    var idxA = Array.IndexOf(EquipWheel.itemNames, a.m_shared.m_name);
+                    var idxB = Array.IndexOf(EquipWheel.itemNames, b.m_shared.m_name);
+
+                    return idxA.CompareTo(idxB);
                 });
 
                 var types = new[] { 
@@ -480,8 +533,14 @@ namespace EquipWheel
                 {
                     items[index] = null;
 
+                    if (namedItems.Count > index)
+                    {
+                        items[index] = namedItems[index];
+                        continue;
+                    }
+
                     if (filteredItems.Count > index)
-                        items[index] = filteredItems[index];
+                        items[index] = filteredItems[index - namedItems.Count];
                 }
 
                 return;

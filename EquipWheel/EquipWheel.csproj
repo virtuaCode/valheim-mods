@@ -85,6 +85,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Awake_Patch.cs" />
+    <Compile Include="UseHotbarItem_Patch.cs" />
     <Compile Include="LeftJoyStick_Patch.cs" />
     <Compile Include="Start_Patch.cs" />
     <Compile Include="EquipWheel.cs" />

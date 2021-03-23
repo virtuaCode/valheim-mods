@@ -113,6 +113,11 @@ Of course you can have both TriggerOnRelease and TriggerOnClick set to true if y
 
 ## Change Log
 
+- Version 1.2.2
+    - Allow overriding hotbar keys
+    - Add item names matching
+- Version 1.2.1
+    - Add support for building variants
 - Version 1.2.0
     - Add item type matching
     - Change Hotkey from string to enum
