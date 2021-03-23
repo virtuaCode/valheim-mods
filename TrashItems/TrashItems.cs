@@ -15,8 +15,8 @@ namespace TrashItems
 
     class TrashItems : BaseUnityPlugin
     {
-        public static ConfigEntry<bool> ModEnabled;
         public static ConfigEntry<bool> ConfirmDialog;
+        public static ConfigEntry<KeyboardShortcut> TrashHotkey;
         public static bool _clickedTrash = false;
         public static bool _confirmed = false;
         public static InventoryGui _gui;
@@ -44,8 +44,9 @@ namespace TrashItems
         {
             MyLogger = Logger;
 
-            ModEnabled = Config.Bind<bool>("General", "Enabled", true, "Enable this mod");
+
             ConfirmDialog = Config.Bind<bool>("General", "ConfirmDialog", false, "Show confirm dialog");
+            TrashHotkey = Config.Bind<KeyboardShortcut>("Input", "TrashHotkey", KeyboardShortcut.Deserialize("Delete"), "Hotkey for destroying items");
 
             Log(nameof(TrashItems) + " Loaded!");
             
@@ -188,6 +189,12 @@ namespace TrashItems
         [HarmonyPatch(typeof(InventoryGui), "UpdateItemDrag")]
         public static void UpdateItemDrag_Postfix(InventoryGui __instance, ref GameObject ___m_dragGo, ItemDrop.ItemData ___m_dragItem, Inventory ___m_dragInventory, int ___m_dragAmount)
         {
+            if (TrashHotkey.Value.IsDown())
+            {
+                _clickedTrash = true;
+            }
+                
+
             if (_clickedTrash && ___m_dragItem != null && ___m_dragInventory.ContainsItem(___m_dragItem))
             {
                 if (ConfirmDialog.Value)
@@ -264,6 +271,7 @@ namespace TrashItems
                 Destroy(dialog);
                 dialog = null;
             }
+
             TrashItem();
         }
 
