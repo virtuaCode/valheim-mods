@@ -20,6 +20,7 @@ namespace EquipWheel
         public static ConfigEntry<KeyCode> Hotkey;
         public static ConfigEntry<bool> TriggerOnRelease;
         public static ConfigEntry<bool> TriggerOnClick;
+        public static ConfigEntry<bool> ToggleMenu;
         public static ConfigEntry<int> IgnoreJoyStickDuration;
         public static ConfigEntry<Color> HighlightColor;
         public static ConfigEntry<float> GuiScale;
@@ -34,7 +35,9 @@ namespace EquipWheel
         public static ConfigEntry<ItemDrop.ItemData.ItemType> ItemType5;
         public static ConfigEntry<ItemDrop.ItemData.ItemType> ItemType6;
         public static ConfigEntry<string> ItemNames;
+        public static ConfigEntry<string> ItemNamesIgnored;
         public static string[] itemNames = new string[] { };
+        public static string[] itemNamesIgnored = new string[] { };
 
         public static ManualLogSource MyLogger;
 
@@ -87,6 +90,7 @@ namespace EquipWheel
             TriggerOnRelease = Config.Bind("Input", "TriggerOnRelease", true, "Releasing the Hotkey will equip/use the selected item");
             TriggerOnClick = Config.Bind("Input", "TriggerOnClick", false, "Click with left mouse button will equip/use the selected item");
             IgnoreJoyStickDuration = Config.Bind("Input", "IgnoreJoyStickDuration", 300, new ConfigDescription("Duration in milliseconds for ignoring left joystick input after button release", new AcceptableValueRange<int>(0, 2000)));
+            ToggleMenu = Config.Bind("Input", "ToggleMenu", false, "When enabled the equip wheel will toggle between hidden/visible when the hotkey was pressed");
             HighlightColor = Config.Bind("Appereance", "HighlightColor", new Color(0.414f, 0.734f, 1f),
                 "Color of the highlighted selection");
             GuiScale = Config.Bind("Appereance", "GuiScale", 0.75f, "Scale factor of the user interface");
@@ -109,10 +113,16 @@ namespace EquipWheel
                 "Item type used for filtering items");
             ItemNames = Config.Bind("Misc", "ItemNames", "",
                 "Separated item names used for filtering items");
-
+            ItemNamesIgnored = Config.Bind("Misc", "ItemNamesIgnored", "",
+                "Separated item names that should be ignored");
             ItemNames.SettingChanged += (sender, args) =>
             {
                 ParseItemNames();
+            };
+
+            ItemNamesIgnored.SettingChanged += (sender, args) =>
+            {
+                ParseItemNamesIgnored();
             };
 
             harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
@@ -126,11 +136,21 @@ namespace EquipWheel
 
         public static void ParseItemNames()
         {
+            ParseNames(ItemNames.Value, ref itemNames);
+        }
+
+        public static void ParseItemNamesIgnored()
+        {
+            ParseNames(ItemNamesIgnored.Value, ref itemNamesIgnored);
+        }
+
+        public static void ParseNames(string value, ref string[] arr)
+        {
             if (ObjectDB.instance == null)
                 return;
 
             char[] delimiterChars = { ' ', ',', '.', ':', '\t' };
-            var names = ItemNames.Value.Split(delimiterChars, StringSplitOptions.RemoveEmptyEntries);
+            var names = value.Split(delimiterChars, StringSplitOptions.RemoveEmptyEntries);
             var tokens = new List<string>();
 
             foreach (var name in names)
@@ -143,7 +163,7 @@ namespace EquipWheel
                 }
             }
 
-            itemNames = tokens.Distinct().ToArray();
+            arr = tokens.Distinct().ToArray();
         }
     }
 
@@ -153,6 +173,7 @@ namespace EquipWheel
         public static AssetBundle assets;
 
         public static bool visible = false;
+        public static int toggleVisible = 0;
         public static bool inventoryVisible = false;
 
 
@@ -266,6 +287,13 @@ namespace EquipWheel
             }
         }
 
+        private void Hide()
+        {
+            ui.gameObject.SetActive(false);
+            visible = false;
+            toggleVisible = 0;
+        }
+
         private void Update()
         {
             if (EquipWheel.JoyStickIgnoreTime > 0)
@@ -275,12 +303,18 @@ namespace EquipWheel
 
             if (!CanOpenMenu)
             {
-                ui.gameObject.SetActive(false);
-                visible = false;
+                Hide();
                 return;
             }
 
-            if (Input.GetKey(EquipWheel.Hotkey.Value) || ZInput.GetButton("JoyButtonX"))
+            if (Input.GetKeyDown(EquipWheel.Hotkey.Value) && EquipWheel.ToggleMenu.Value && toggleVisible < 2)
+                toggleVisible++;
+
+            var toggleDown =
+                Input.GetKeyDown(EquipWheel.Hotkey.Value) && EquipWheel.ToggleMenu.Value && toggleVisible == 2;
+            var hotkeyRelease = Input.GetKeyUp(EquipWheel.Hotkey.Value) && !EquipWheel.ToggleMenu.Value;
+
+            if ((EquipWheel.ToggleMenu.Value && toggleVisible > 0) || (Input.GetKey(EquipWheel.Hotkey.Value) && !EquipWheel.ToggleMenu.Value) || ZInput.GetButton("JoyButtonX"))
             {
                 ui.gameObject.SetActive(true);
                 visible = true;
@@ -296,11 +330,14 @@ namespace EquipWheel
                         else
                             localPlayer.UseItem(null, ui.CurrentItem, false);
                     }
-                }
-                return;
+                } 
+
+                if (!toggleDown)
+                    return;
             }
 
-            if (EquipWheel.TriggerOnRelease.Value && (Input.GetKeyUp(EquipWheel.Hotkey.Value) || ZInput.GetButtonUp("JoyButtonX")))
+
+            if (EquipWheel.TriggerOnRelease.Value && (toggleDown || hotkeyRelease || ZInput.GetButtonUp("JoyButtonX")))
             {
                 if (ui.CurrentItem != null)
                 {
@@ -309,12 +346,11 @@ namespace EquipWheel
                     else
                         localPlayer.UseItem(null, ui.CurrentItem, false);
                 }
-
+                
                 EquipWheel.JoyStickIgnoreTime = EquipWheel.IgnoreJoyStickDuration.Value / 1000f;
             }
 
-            visible = false;
-            ui.gameObject.SetActive(false);
+            Hide();
         }
     }
 
@@ -509,7 +545,8 @@ namespace EquipWheel
                          type == EquipWheel.ItemType3.Value || type == EquipWheel.ItemType4.Value ||
                          type == EquipWheel.ItemType5.Value || type == EquipWheel.ItemType6.Value))
                     {
-                        filteredItems.Add(item);
+                        if (!Array.Exists(EquipWheel.itemNamesIgnored, name => name.Equals(item.m_shared.m_name)))
+                            filteredItems.Add(item);
                     }
                 }
 
@@ -539,7 +576,7 @@ namespace EquipWheel
                         continue;
                     }
 
-                    if (filteredItems.Count > index)
+                    if (filteredItems.Count > index - namedItems.Count)
                         items[index] = filteredItems[index - namedItems.Count];
                 }
 
