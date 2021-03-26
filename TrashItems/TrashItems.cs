@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using UnityEngine;
 using BepInEx;
 using HarmonyLib;
@@ -8,6 +9,9 @@ using UnityEngine.Events;
 using System.Reflection;
 using System.IO;
 using BepInEx.Logging;
+using JetBrains.Annotations;
+using UnityEngine.Audio;
+using Random = UnityEngine.Random;
 
 namespace TrashItems
 {
@@ -17,14 +21,28 @@ namespace TrashItems
     {
         public static ConfigEntry<bool> ConfirmDialog;
         public static ConfigEntry<KeyboardShortcut> TrashHotkey;
+        public static ConfigEntry<SoundEffect> Sfx;
         public static bool _clickedTrash = false;
         public static bool _confirmed = false;
         public static InventoryGui _gui;
         public static Sprite trashSprite;
         public static Sprite bgSprite;
         public static GameObject dialog;
+        public static AudioClip[] sounds = new AudioClip[3];
+        public static Transform trash;
+        public static AudioSource audio;
 
         public static ManualLogSource MyLogger;
+
+
+        public enum SoundEffect
+        {
+            None,
+            Sound1,
+            Sound2,
+            Sound3,
+            Random
+        }
 
         public static void Log(string msg)
         {
@@ -46,16 +64,35 @@ namespace TrashItems
 
 
             ConfirmDialog = Config.Bind<bool>("General", "ConfirmDialog", false, "Show confirm dialog");
+            Sfx = Config.Bind<SoundEffect>("General", "SoundEffect", SoundEffect.Random,
+                "Sound effect when trashing items");
             TrashHotkey = Config.Bind<KeyboardShortcut>("Input", "TrashHotkey", KeyboardShortcut.Deserialize("Delete"), "Hotkey for destroying items");
+
 
             Log(nameof(TrashItems) + " Loaded!");
             
             trashSprite = LoadSprite("TrashItems.res.trash.png", new Rect(0, 0, 64, 64), new Vector2(32, 32));
             bgSprite = LoadSprite("TrashItems.res.trashmask.png", new Rect(0, 0, 96, 112), new Vector2(48, 56));
 
+            sounds[0] = LoadAudioClip("TrashItems.res.trash1.wav");
+            sounds[1] = LoadAudioClip("TrashItems.res.trash2.wav");
+            sounds[2] = LoadAudioClip("TrashItems.res.trash3.wav");
+
             Harmony.CreateAndPatchAll(typeof(TrashItems));
         }
 
+
+        public static AudioClip LoadAudioClip(string path)
+        {
+            Assembly asm = Assembly.GetExecutingAssembly();
+            Stream audioStream = asm.GetManifestResourceStream(path);
+
+            using (MemoryStream mStream = new MemoryStream())
+            {
+                audioStream.CopyTo(mStream);
+                return WavUtility.ToAudioClip(mStream.GetBuffer());
+            }
+        }
 
         public static Sprite LoadSprite(string path, Rect size, Vector2 pivot, int units = 100)
         {
@@ -79,7 +116,7 @@ namespace TrashItems
         public static void Show_Postfix(InventoryGui __instance)
         {
             Transform playerInventory = InventoryGui.instance.m_player.transform;
-            Transform trash = playerInventory.Find("Trash");
+            trash = playerInventory.Find("Trash");
 
             if (trash != null)
                 return;
@@ -88,6 +125,14 @@ namespace TrashItems
 
             trash = Instantiate(playerInventory.Find("Armor"), playerInventory);
             trash.gameObject.AddComponent<TrashButton>();
+
+            var guiMixer = AudioMan.instance.m_masterMixer.FindMatchingGroups("GUI")[0];
+
+            audio = trash.gameObject.AddComponent<AudioSource>();
+            audio.playOnAwake = false;
+            audio.loop = false;
+            audio.outputAudioMixerGroup = guiMixer;
+            audio.bypassReverbZones = true;
         }
 
         public class TrashButton : MonoBehaviour
@@ -104,7 +149,6 @@ namespace TrashItems
 
                 var playerInventory = InventoryGui.instance.m_player.transform;
                 RectTransform rect = GetComponent<RectTransform>();
-
                 rect.anchoredPosition -= new Vector2(0, 78);
 
                 // Replace text and color
@@ -219,6 +263,27 @@ namespace TrashItems
                 }
                 else
                     ___m_dragInventory.RemoveItem(___m_dragItem, ___m_dragAmount);
+
+                if (audio != null)
+                {
+                    switch (Sfx.Value)
+                    {
+                        case SoundEffect.None:
+                            break;
+                        case SoundEffect.Random:
+                            audio.PlayOneShot(sounds[Random.Range(0, 3)]);
+                            break;
+                        case SoundEffect.Sound1:
+                            audio.PlayOneShot(sounds[0]);
+                            break;
+                        case SoundEffect.Sound2:
+                            audio.PlayOneShot(sounds[1]);
+                            break;
+                        case SoundEffect.Sound3:
+                            audio.PlayOneShot(sounds[2]);
+                            break;
+                    }
+                }
 
                 __instance.GetType().GetMethod("SetupDragItem", BindingFlags.Instance | BindingFlags.NonPublic)
                     .Invoke(__instance, new object[] {null, null, 0});

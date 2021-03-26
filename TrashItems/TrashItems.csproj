@@ -58,6 +58,9 @@
       <HintPath>..\Libraries\UnityEngine.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>..\Libraries\UnityEngine.AudioModule.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>..\Libraries\UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
@@ -82,10 +85,21 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TrashItems.cs" />
+    <Compile Include="UnityWav\WavUtility.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="res\trash.png" />
     <EmbeddedResource Include="res\trashmask.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="res\trash1.wav" />
+    <EmbeddedResource Include="res\trash2.wav" />
+    <EmbeddedResource Include="res\trash3.wav" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="UnityWav\.git" />
+    <None Include="UnityWav\LICENSE" />
+    <None Include="UnityWav\README.md" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
