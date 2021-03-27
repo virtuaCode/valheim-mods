@@ -45,6 +45,8 @@ A config file will be created after running the game once while the mod is insta
 
 ## Change Log
 
+- Version 1.3.1
+    - Add protected bindings
 - Version 1.3.0
     - Add equip weapons while running
     - Add gamepad hotkey and automatic unbinding

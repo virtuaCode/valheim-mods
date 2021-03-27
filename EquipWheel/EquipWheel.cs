@@ -43,6 +43,7 @@ namespace EquipWheel
         public static string[] itemNamesIgnored = new string[] { };
         public static KeyCode replacedKey = KeyCode.None;
         public static List<string> replacedButtons = new List<string>();
+        public static ConfigEntry<string> ProtectedBindings;
 
         public static ManualLogSource MyLogger;
 
@@ -98,6 +99,9 @@ namespace EquipWheel
                     new AcceptableValueRange<int>(0, 2000)));
             ToggleMenu = Config.Bind("Input", "ToggleMenu", false,
                 "When enabled the equip wheel will toggle between hidden/visible when the hotkey was pressed");
+            ProtectedBindings = Config.Bind("Input", "ProtectedBindings",
+                "JoyTabLeft JoyTabRight JoyButtonA JoyButtonB JoyButtonX JoyButtonY",
+                "Button bindings that should never be overriden");
 
             /* Appereance */
             HighlightColor = Config.Bind("Appereance", "HighlightColor", new Color(0.414f, 0.734f, 1f),
@@ -171,10 +175,14 @@ namespace EquipWheel
             if (ZInput.instance != null)
             {
                 var buttons = (Dictionary<string, ZInput.ButtonDef>) typeof(ZInput).GetField("m_buttons", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(ZInput.instance);
+                var bindings = ParseTokens(ProtectedBindings.Value);
 
                 foreach (KeyValuePair<string, ZInput.ButtonDef> entry in buttons)
                 {
                     var keyCode = entry.Value.m_key;
+                    
+                    if (Array.IndexOf(bindings, entry.Key) > -1)
+                        continue;
 
                     if (keyCode != KeyCode.None && keyCode == EquipWheel.HotkeyGamepad.Value.MainKey)
                     {
@@ -246,9 +254,8 @@ namespace EquipWheel
             if (ObjectDB.instance == null)
                 return;
 
-            char[] delimiterChars = { ' ', ',', '.', ':', '\t' };
-            var names = value.Split(delimiterChars, StringSplitOptions.RemoveEmptyEntries);
-            var tokens = new List<string>();
+            var names = ParseTokens(value);
+            var ids = new List<string>();
 
             foreach (var name in names)
             {
@@ -256,11 +263,17 @@ namespace EquipWheel
                 if (prefab != null)
                 {
                     var item = prefab.GetComponent<ItemDrop>();
-                    tokens.Add(item.m_itemData.m_shared.m_name);
+                    ids.Add(item.m_itemData.m_shared.m_name);
                 }
             }
 
-            arr = tokens.Distinct().ToArray();
+            arr = ids.Distinct().ToArray();
+        }
+
+        public static string[] ParseTokens(string value)
+        {
+            char[] delimiterChars = { ' ', ',', '.', ':', '\t' };
+            return value.Split(delimiterChars, StringSplitOptions.RemoveEmptyEntries);
         }
     }
 
