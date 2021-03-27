@@ -1,7 +1,9 @@
 ## Overview
 
-This mod adds an user interface for equipping/using items in an easier and faster way. The menu will be visible by holding the 'G' key (can be
-changed). On gamepads it's the X button.
+This mod adds an user interface for equipping/using items in an easier and faster way. The menu will be visible by holding the 'G' key (can be changed). On gamepads it's the X button by default.
+
+**New in version 1.3.0: Better binding for hotkeys**
+Hotkeys can now be key combos like 'SHIFT + 1'. Also the hotkey for gamepads can be changed in the config.
 
 **New in version 1.2.0: Item Type Matching Mode**
 When enabled, it scans the whole inventory for items of the specified types in the config and use them in the equip wheel.
@@ -43,6 +45,12 @@ A config file will be created after running the game once while the mod is insta
 
 ## Change Log
 
+- Version 1.3.0
+    - Add equip weapons while running
+    - Add gamepad hotkey and automatic unbinding
+    - Add mod enabled/disabled option
+    - Change hotkey option from KeyCode to KeyboardShortcut (enables key combos)
+    - Enable shield autoequip for hotkeybar
 - Version 1.2.3
     - Add ignoring item names (blacklist)
     - Add toggle option

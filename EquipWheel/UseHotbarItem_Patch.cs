@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 
@@ -16,9 +17,10 @@ namespace EquipWheel
 
         public static bool Prefix(int index)
         {
-            var k = Array.IndexOf(NUMBERS, EquipWheel.Hotkey.Value);
+            var notNumber = Array.IndexOf(NUMBERS, EquipWheel.Hotkey.Value.MainKey) != index - 1;
+            var notDown = !EquipWheel.IsShortcutDown;
 
-            return k != index - 1 || !EquipGui.CanOpenMenu || ZInput.IsGamepadActive();
+            return notNumber || notDown || !EquipGui.CanOpenMenu || ZInput.IsGamepadActive();
         }
     }
 }

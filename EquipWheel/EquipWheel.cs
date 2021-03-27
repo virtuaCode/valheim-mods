@@ -17,11 +17,14 @@ namespace EquipWheel
     public class EquipWheel : BaseUnityPlugin
     {
         private Harmony harmony;
-        public static ConfigEntry<KeyCode> Hotkey;
+        public static ConfigEntry<KeyboardShortcut> Hotkey;
+        public static ConfigEntry<KeyboardShortcut> HotkeyGamepad;
+        public static ConfigEntry<bool> EquipWhileRunning;
         public static ConfigEntry<bool> TriggerOnRelease;
         public static ConfigEntry<bool> TriggerOnClick;
         public static ConfigEntry<bool> ToggleMenu;
         public static ConfigEntry<int> IgnoreJoyStickDuration;
+        public static ConfigEntry<bool> ModEnabled;
         public static ConfigEntry<Color> HighlightColor;
         public static ConfigEntry<float> GuiScale;
         public static ConfigEntry<bool> AutoEquipShield;
@@ -38,15 +41,14 @@ namespace EquipWheel
         public static ConfigEntry<string> ItemNamesIgnored;
         public static string[] itemNames = new string[] { };
         public static string[] itemNamesIgnored = new string[] { };
+        public static KeyCode replacedKey = KeyCode.None;
+        public static List<string> replacedButtons = new List<string>();
 
         public static ManualLogSource MyLogger;
 
         public static Color GetHighlightColor
         {
-            get
-            {
-                return HighlightColor.Value;
-            }
+            get { return HighlightColor.Value; }
         }
 
         public static float JoyStickIgnoreTime = 0;
@@ -60,6 +62,7 @@ namespace EquipWheel
         {
             MyLogger?.LogError(msg);
         }
+
         public static void LogWarn(string msg)
         {
             MyLogger?.LogWarning(msg);
@@ -78,25 +81,37 @@ namespace EquipWheel
         {
             MyLogger = Logger;
 
-            if (IsDedicated())
-            {
-                LogWarn("Mod not loaded because game instance is a dedicated server.");
-                return;
-            }
+            /* General */
+            ModEnabled = Config.Bind("General", "ModEnabled", true, "Enable mod when value is true");
 
-            Hotkey = Config.Bind("Input", "Hotkey", KeyCode.G,
-                "Hotkey for opening equip wheel menu");
+            /* Input */                                                                                    
+            Hotkey = Config.Bind("Input", "Hotkey", KeyboardShortcut.Deserialize("G"),
+    "Hotkey for opening equip wheel menu");
+            HotkeyGamepad = Config.Bind("Input", "HotkeyGamepad", KeyboardShortcut.Deserialize("JoystickButton2"),
+                "Hotkey on gamepads for opening equip wheel menu");
+            TriggerOnRelease = Config.Bind("Input", "TriggerOnRelease", true,
+                "Releasing the Hotkey will equip/use the selected item");
+            TriggerOnClick = Config.Bind("Input", "TriggerOnClick", false,
+                "Click with left mouse button will equip/use the selected item");
+            IgnoreJoyStickDuration = Config.Bind("Input", "IgnoreJoyStickDuration", 300,
+                new ConfigDescription("Duration in milliseconds for ignoring left joystick input after button release",
+                    new AcceptableValueRange<int>(0, 2000)));
+            ToggleMenu = Config.Bind("Input", "ToggleMenu", false,
+                "When enabled the equip wheel will toggle between hidden/visible when the hotkey was pressed");
 
-            TriggerOnRelease = Config.Bind("Input", "TriggerOnRelease", true, "Releasing the Hotkey will equip/use the selected item");
-            TriggerOnClick = Config.Bind("Input", "TriggerOnClick", false, "Click with left mouse button will equip/use the selected item");
-            IgnoreJoyStickDuration = Config.Bind("Input", "IgnoreJoyStickDuration", 300, new ConfigDescription("Duration in milliseconds for ignoring left joystick input after button release", new AcceptableValueRange<int>(0, 2000)));
-            ToggleMenu = Config.Bind("Input", "ToggleMenu", false, "When enabled the equip wheel will toggle between hidden/visible when the hotkey was pressed");
+            /* Appereance */
             HighlightColor = Config.Bind("Appereance", "HighlightColor", new Color(0.414f, 0.734f, 1f),
                 "Color of the highlighted selection");
             GuiScale = Config.Bind("Appereance", "GuiScale", 0.75f, "Scale factor of the user interface");
             HideHotkeyBar = Config.Bind("Appereance", "HideHotkeyBar", false, "Hides the top-left Hotkey Bar");
-            AutoEquipShield = Config.Bind("Misc", "AutoEquipShield", true, "Enable auto equip of shield when one-handed weapon was equiped");
-            InventoryRow = Config.Bind("Misc", "InventoryRow", 1, new ConfigDescription("Row of the inventory that should be used for the equip wheel", new AcceptableValueRange<int>(1, 4)));
+
+            /* Misc */
+            EquipWhileRunning = Config.Bind("Misc", "EquipWhileRunning", true, "Allow to equip weapons while running");
+            AutoEquipShield = Config.Bind("Misc", "AutoEquipShield", true,
+                "Enable auto equip of shield when one-handed weapon was equipped");
+            InventoryRow = Config.Bind("Misc", "InventoryRow", 1,
+                new ConfigDescription("Row of the inventory that should be used for the equip wheel",
+                    new AcceptableValueRange<int>(1, 4)));
             UseItemTypeMatching = Config.Bind("Misc", "UseItemTypeMatching", false,
                 "Will scan the whole inventory for items of the specified item types and show them in the equip wheel");
             ItemType1 = Config.Bind("Misc", "ItemType1", ItemDrop.ItemData.ItemType.None,
@@ -115,15 +130,22 @@ namespace EquipWheel
                 "Separated item names used for filtering items");
             ItemNamesIgnored = Config.Bind("Misc", "ItemNamesIgnored", "",
                 "Separated item names that should be ignored");
-            ItemNames.SettingChanged += (sender, args) =>
-            {
-                ParseItemNames();
-            };
 
-            ItemNamesIgnored.SettingChanged += (sender, args) =>
+            if (!ModEnabled.Value)
             {
-                ParseItemNamesIgnored();
-            };
+                LogWarn("Mod not loaded because it was disabled via config.");
+                return;
+            }
+
+            if (IsDedicated())
+            {
+                LogWarn("Mod not loaded because game instance is a dedicated server.");
+                return;
+            }
+
+            ItemNames.SettingChanged += (sender, args) => { ParseItemNames(); };
+            ItemNamesIgnored.SettingChanged += (sender, args) => { ParseItemNamesIgnored(); };
+            HotkeyGamepad.SettingChanged += (sender, args) => { RestoreGamepadButton(); ReplaceGamepadButton(); };
 
             harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
             Log(nameof(EquipWheel) + " Loaded!");
@@ -142,6 +164,81 @@ namespace EquipWheel
         public static void ParseItemNamesIgnored()
         {
             ParseNames(ItemNamesIgnored.Value, ref itemNamesIgnored);
+        }
+
+        public static void ReplaceGamepadButton()
+        {
+            if (ZInput.instance != null)
+            {
+                var buttons = (Dictionary<string, ZInput.ButtonDef>) typeof(ZInput).GetField("m_buttons", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(ZInput.instance);
+
+                foreach (KeyValuePair<string, ZInput.ButtonDef> entry in buttons)
+                {
+                    var keyCode = entry.Value.m_key;
+
+                    if (keyCode != KeyCode.None && keyCode == EquipWheel.HotkeyGamepad.Value.MainKey)
+                    {
+                        EquipWheel.replacedButtons.Add(entry.Key);
+                        EquipWheel.replacedKey = keyCode;
+
+                        ZInput.instance.Setbutton(entry.Key, KeyCode.None);
+                    }
+                }
+            }
+        }
+
+        public static void RestoreGamepadButton()
+        {
+            if (ZInput.instance != null)
+            {
+                if (replacedButtons.Count > 0)
+                {
+                    foreach (var button in replacedButtons)
+                    {
+                        ZInput.instance.Setbutton(button, replacedKey);
+
+                    }
+                    replacedButtons.Clear();
+                    replacedKey = KeyCode.None;
+                }
+            }
+        }
+
+        public static bool IsShortcutDown
+        {
+            get
+            {
+                var shortcut = ZInput.IsGamepadActive() ? EquipWheel.HotkeyGamepad.Value : EquipWheel.Hotkey.Value;
+                var mainKey = shortcut.MainKey;
+                var modifierKeys = shortcut.Modifiers.ToArray();
+
+                return Input.GetKeyDown(mainKey) && modifierKeys.All(Input.GetKey);
+            }
+        }
+
+        public static bool IsShortcutUp
+        {
+            get
+            {
+                var shortcut = ZInput.IsGamepadActive() ? EquipWheel.HotkeyGamepad.Value : EquipWheel.Hotkey.Value;
+                var mainKey = shortcut.MainKey;
+                var modifierKeys = shortcut.Modifiers.ToArray();
+
+                return Input.GetKeyUp(mainKey) || modifierKeys.Any(Input.GetKeyUp);
+            }
+        }
+
+        public static bool IsShortcutPressed
+        {
+            get
+            {
+                var shortcut = ZInput.IsGamepadActive() ? EquipWheel.HotkeyGamepad.Value : EquipWheel.Hotkey.Value;
+                var mainKey = shortcut.MainKey;
+
+                var modifierKeys = shortcut.Modifiers.ToArray();
+
+                return Input.GetKey(mainKey) && modifierKeys.All(Input.GetKey);
+            }
         }
 
         public static void ParseNames(string value, ref string[] arr)
@@ -226,9 +323,8 @@ namespace EquipWheel
 
             hotKeyBar.gameObject.SetActive(!EquipWheel.HideHotkeyBar.Value);
 
-            // Unbind JoySit
-            ZInput.instance.Setbutton("JoySit", KeyCode.None);
-
+            EquipWheel.RestoreGamepadButton();
+            EquipWheel.ReplaceGamepadButton();
             EquipWheel.ParseItemNames();
         }
 
@@ -243,35 +339,7 @@ namespace EquipWheel
                 assets = AssetBundle.LoadFromMemory(mStream.ToArray());
             }
         }
-
-        private bool TryEquipWithShield()
-        {
-            var localPlayer = Player.m_localPlayer;
-            localPlayer.UseItem(null, ui.CurrentItem, false);
-
-            var shieldEquipped = (localPlayer.GetLeftItem() != null &&
-                                  localPlayer.GetLeftItem().m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield);
-            var equipShield = !shieldEquipped && localPlayer.IsItemQueued(ui.CurrentItem) && ui.CurrentItem.m_equiped == false && ui.CurrentItem.m_shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon;
-
-            if (equipShield)
-            {
-                var items = localPlayer.GetInventory().GetAllItems();
-
-                foreach (var item in items)
-                {
-                    if (item != null)
-                    {
-                        if (item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield)
-                        {
-                            localPlayer.UseItem(null, item, false);
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            return false;
-        }
+        
 
         public static bool CanOpenMenu
         {
@@ -307,46 +375,39 @@ namespace EquipWheel
                 return;
             }
 
-            if (Input.GetKeyDown(EquipWheel.Hotkey.Value) && EquipWheel.ToggleMenu.Value && toggleVisible < 2)
+            if (EquipWheel.IsShortcutDown && EquipWheel.ToggleMenu.Value && toggleVisible < 2)
                 toggleVisible++;
 
             var toggleDown =
-                Input.GetKeyDown(EquipWheel.Hotkey.Value) && EquipWheel.ToggleMenu.Value && toggleVisible == 2;
-            var hotkeyRelease = Input.GetKeyUp(EquipWheel.Hotkey.Value) && !EquipWheel.ToggleMenu.Value;
+                EquipWheel.IsShortcutDown && EquipWheel.ToggleMenu.Value && toggleVisible == 2;
+            var hotkeyRelease = EquipWheel.IsShortcutUp && !EquipWheel.ToggleMenu.Value;
 
-            if ((EquipWheel.ToggleMenu.Value && toggleVisible > 0) || (Input.GetKey(EquipWheel.Hotkey.Value) && !EquipWheel.ToggleMenu.Value) || ZInput.GetButton("JoyButtonX"))
+            if ((EquipWheel.ToggleMenu.Value && toggleVisible > 0) || (EquipWheel.IsShortcutPressed && !EquipWheel.ToggleMenu.Value))
             {
                 ui.gameObject.SetActive(true);
                 visible = true;
 
-                if (EquipWheel.TriggerOnClick.Value && Input.GetMouseButtonDown(0))
+                if (EquipWheel.TriggerOnClick.Value && (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.JoystickButton0)))
                 {
                     if (ui.CurrentItem != null)
                     {
                         ui.Flash();
-
-                        if (EquipWheel.AutoEquipShield.Value)
-                            TryEquipWithShield();
-                        else
-                            localPlayer.UseItem(null, ui.CurrentItem, false);
+                        localPlayer.UseItem(null, ui.CurrentItem, false);
                     }
-                } 
+                }
 
                 if (!toggleDown)
                     return;
             }
 
 
-            if (EquipWheel.TriggerOnRelease.Value && (toggleDown || hotkeyRelease || ZInput.GetButtonUp("JoyButtonX")))
+            if (EquipWheel.TriggerOnRelease.Value && (toggleDown || hotkeyRelease))
             {
                 if (ui.CurrentItem != null)
                 {
-                    if (EquipWheel.AutoEquipShield.Value)
-                        TryEquipWithShield();
-                    else
-                        localPlayer.UseItem(null, ui.CurrentItem, false);
+                    localPlayer.UseItem(null, ui.CurrentItem, false);
                 }
-                
+
                 EquipWheel.JoyStickIgnoreTime = EquipWheel.IgnoreJoyStickDuration.Value / 1000f;
             }
 
@@ -446,7 +507,7 @@ namespace EquipWheel
                     if (x != 0 || y != 0)
                         return Mathf.Atan2(y, x) * Mathf.Rad2Deg - 90;
                 }
-                
+
 
                 var dir = Input.mousePosition - cursor.transform.position;
                 var angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg - 90;
@@ -481,7 +542,7 @@ namespace EquipWheel
             highlight = transform.Find("Highlight").gameObject;
 
             hotKeyBar = Hud.instance.transform.Find("hudroot/HotKeyBar").gameObject.GetComponent<HotkeyBar>();
-            
+
             m_elementPrefab = hotKeyBar.m_elementPrefab;
 
             itemsRoot = transform.Find("Items");
@@ -509,7 +570,7 @@ namespace EquipWheel
             {
                 return;
             }
-            
+
 
             UpdateItems();
             UpdateIcons(Player.m_localPlayer, true);
@@ -558,7 +619,7 @@ namespace EquipWheel
                     return idxA.CompareTo(idxB);
                 });
 
-                var types = new[] { 
+                var types = new[] {
                     EquipWheel.ItemType1.Value, EquipWheel.ItemType2.Value, EquipWheel.ItemType3.Value,
                     EquipWheel.ItemType4.Value, EquipWheel.ItemType5.Value, EquipWheel.ItemType6.Value
                 };
@@ -640,7 +701,7 @@ namespace EquipWheel
             var images = cursor.GetComponentsInChildren<Image>(true);
             foreach (var image in images)
             {
-                image.color = CurrentItem == null ? new Color(0,0,0,0.5f) : EquipWheel.GetHighlightColor;
+                image.color = CurrentItem == null ? new Color(0, 0, 0, 0.5f) : EquipWheel.GetHighlightColor;
 
                 if (image.gameObject.name == "Image")
                 {

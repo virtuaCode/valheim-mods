@@ -84,6 +84,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AbortEquipQueue_Patch.cs" />
     <Compile Include="Awake_Patch.cs" />
     <Compile Include="UseHotbarItem_Patch.cs" />
     <Compile Include="LeftJoyStick_Patch.cs" />
@@ -92,6 +93,7 @@
     <Compile Include="IsVisible_Patch.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="UpdateMouseCapture_Patch.cs" />
+    <Compile Include="UseItem_Patch.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="res\selectionwheel" />
