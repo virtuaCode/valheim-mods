@@ -84,9 +84,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\WheelManager\WheelManager.cs">
-      <Link>WheelManager.cs</Link>
-    </Compile>
     <Compile Include="AbortEquipQueue_Patch.cs" />
     <Compile Include="Awake_Patch.cs" />
     <Compile Include="UseHotbarItem_Patch.cs" />
@@ -100,6 +97,13 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="res\selectionwheel" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WheelManager\WheelManager.csproj">
+      <Project>{6d8ca6f2-5229-4132-bfc6-d2f0f8c87fa6}</Project>
+      <Name>WheelManager</Name>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
