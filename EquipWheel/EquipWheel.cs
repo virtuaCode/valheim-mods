@@ -14,9 +14,9 @@ using UnityEngine.UI;
 namespace EquipWheel
 {
     [BepInPlugin("virtuacode.valheim.equipwheel", "Equip Wheel Mod", "0.0.1")]
-    public class EquipWheel : BaseUnityPlugin
+    public class EquipWheel : BaseUnityPlugin, WheelManager.WheelManager.IWheel
     {
-        private Harmony harmony;
+        private static Harmony harmony;
         public static ConfigEntry<KeyboardShortcut> Hotkey;
         public static ConfigEntry<KeyboardShortcut> HotkeyGamepad;
         public static ConfigEntry<bool> EquipWhileRunning;
@@ -46,14 +46,16 @@ namespace EquipWheel
         public static ConfigEntry<string> ProtectedBindings;
 
         public static ManualLogSource MyLogger;
+        private static EquipWheel instance;
 
+        
         public static Color GetHighlightColor
         {
             get { return HighlightColor.Value; }
         }
 
         public static float JoyStickIgnoreTime = 0;
-
+        public static EquipWheel Instance => instance;
         public static void Log(string msg)
         {
             MyLogger?.LogInfo(msg);
@@ -81,6 +83,8 @@ namespace EquipWheel
         public void Awake()
         {
             MyLogger = Logger;
+            instance = this;
+
 
             /* General */
             ModEnabled = Config.Bind("General", "ModEnabled", true, "Enable mod when value is true");
@@ -152,11 +156,15 @@ namespace EquipWheel
             HotkeyGamepad.SettingChanged += (sender, args) => { RestoreGamepadButton(); ReplaceGamepadButton(); };
 
             harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
+
+            WheelManager.WheelManager.AddWheel(this);
+
             Log(nameof(EquipWheel) + " Loaded!");
         }
 
         void OnDestroy()
         {
+            WheelManager.WheelManager.RemoveWheel(this);
             harmony?.UnpatchAll();
         }
 
@@ -168,6 +176,17 @@ namespace EquipWheel
         public static void ParseItemNamesIgnored()
         {
             ParseNames(ItemNamesIgnored.Value, ref itemNamesIgnored);
+        }
+
+        public static bool IsOnTop
+        {
+            get
+            {
+                if (Instance == null)
+                    return false;
+
+                return WheelManager.WheelManager.OnTop(Instance);
+            }
         }
 
         public static void ReplaceGamepadButton()
@@ -274,6 +293,25 @@ namespace EquipWheel
         {
             char[] delimiterChars = { ' ', ',', '.', ':', '\t' };
             return value.Split(delimiterChars, StringSplitOptions.RemoveEmptyEntries);
+        }
+        
+        public int GetKeyCount()
+        {
+            var matches = 0;
+            var hotkey = ZInput.IsGamepadActive() ? HotkeyGamepad.Value : Hotkey.Value;
+
+            var main = hotkey.MainKey;
+            var mods = hotkey.Modifiers.ToArray();
+
+            if (main == KeyCode.None)
+                    return matches;
+
+            if (Input.GetKeyDown(main))
+                    matches++;
+
+            matches += mods.Count(Input.GetKey);
+
+            return matches;
         }
     }
 
@@ -388,11 +426,11 @@ namespace EquipWheel
                 return;
             }
 
-            if (EquipWheel.IsShortcutDown && EquipWheel.ToggleMenu.Value && toggleVisible < 2)
+            if (EquipWheel.IsShortcutDown && EquipWheel.ToggleMenu.Value && toggleVisible < 2 && EquipWheel.IsOnTop)
                 toggleVisible++;
 
             var toggleDown =
-                EquipWheel.IsShortcutDown && EquipWheel.ToggleMenu.Value && toggleVisible == 2;
+                EquipWheel.IsShortcutDown && EquipWheel.ToggleMenu.Value && toggleVisible == 2 && EquipWheel.IsOnTop;
             var hotkeyRelease = EquipWheel.IsShortcutUp && !EquipWheel.ToggleMenu.Value;
 
             if ((EquipWheel.ToggleMenu.Value && toggleVisible > 0) || (EquipWheel.IsShortcutPressed && !EquipWheel.ToggleMenu.Value))

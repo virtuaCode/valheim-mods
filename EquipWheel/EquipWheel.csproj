@@ -84,6 +84,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\WheelManager\WheelManager.cs">
+      <Link>WheelManager.cs</Link>
+    </Compile>
     <Compile Include="AbortEquipQueue_Patch.cs" />
     <Compile Include="Awake_Patch.cs" />
     <Compile Include="UseHotbarItem_Patch.cs" />

@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModifyDataPerSec", "ModifyD
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyHarvest", "EasyHarvest\EasyHarvest.csproj", "{65AAED96-B7E4-4F3E-8391-3DFE78B69222}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WheelManager", "WheelManager\WheelManager.csproj", "{6D8CA6F2-5229-4132-BFC6-D2F0F8C87FA6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +47,10 @@ Global
 		{65AAED96-B7E4-4F3E-8391-3DFE78B69222}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{65AAED96-B7E4-4F3E-8391-3DFE78B69222}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{65AAED96-B7E4-4F3E-8391-3DFE78B69222}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6D8CA6F2-5229-4132-BFC6-D2F0F8C87FA6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D8CA6F2-5229-4132-BFC6-D2F0F8C87FA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D8CA6F2-5229-4132-BFC6-D2F0F8C87FA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D8CA6F2-5229-4132-BFC6-D2F0F8C87FA6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
