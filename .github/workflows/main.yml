@@ -132,34 +132,16 @@ jobs:
           echo ::set-output name=mod::$(echo ${GITHUB_REF:11} | cut -d'-' -f 2 | cat)
         
       - name: Update const string BepinEx version field
-        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' EquipWheel/EquipWheel.cs
-        
-      - name: Rename namespaces
-        run: sed -i 's/namespace EquipWheel/namespace ${{matrix.mod}}/g' EquipWheel/*.cs
-      
-      - name: Rename assembly info
-        run: sed -i 's/"EquipWheel"/"${{matrix.mod}}"/g' EquipWheel/Properties/AssemblyInfo.cs
-
+        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' ${{matrix.mod}}/EquipWheel.cs
+    
       - name: Change String Case
         id: lower
         uses: ASzc/change-string-case-action@v2
         with:
           string: ${{matrix.mod}}
 
-      - name: Rename bepinex mod id
-        run: sed -i 's/"virtuacode.valheim.equipwheel"/"virtuacode.valheim.${{steps.lower.outputs.lowercase}}"/g' EquipWheel/EquipWheel.cs
-
-      - name: Rename bepinex mod name
-        run: sed -i 's/"Equip Wheel Mod"/"Equip Wheel Mod (${{matrix.mod}})"/g' EquipWheel/EquipWheel.cs
-
-      - name: Rename root namespace
-        run: sed -i 's/<RootNamespace>EquipWheel<\/RootNamespace>/<RootNamespace>${{matrix.mod}}<\/RootNamespace>/g' EquipWheel/*.csproj
-
-      - name: Rename assembly name
-        run: sed -i 's/<AssemblyName>EquipWheel<\/AssemblyName>/<AssemblyName>${{matrix.mod}}<\/AssemblyName>/g' EquipWheel/*.csproj
-
       - name: Build and Create the package
-        run: xbuild ValheimMod.sln /t:EquipWheel /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
+        run: xbuild ValheimMod.sln /t:${{matrix.mod}} /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
       
       - uses: actions/upload-artifact@v2
         with:

@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("WheelManager")]
+[assembly: AssemblyTitle("EquipWheelTwo")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("WheelManager")]
+[assembly: AssemblyProduct("EquipWheelTwo")]
 [assembly: AssemblyCopyright("Copyright ©  2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("6d8ca6f2-5229-4132-bfc6-d2f0f8c87fa6")]
+[assembly: Guid("7a967d55-e853-4fc7-9040-7913122fb3b5")]
 
 // Version information for an assembly consists of the following four values:
 //
