@@ -4,12 +4,40 @@ using System.Linq;
 namespace EquipWheel
 {
     public sealed class WheelManager
-    {
+    { 
+
         private static readonly HashSet<IWheel> wheels = new HashSet<IWheel>();
+        public static bool inventoryVisible = false;
+
+        public static bool AnyVisible
+        {
+            get
+            {
+                return wheels.Any(w => w.IsVisible());
+            }
+        }
 
         public interface IWheel
         {
-            int GetKeyCount();
+            int GetKeyCountDown();
+            int GetKeyCountPressed();
+            bool IsVisible();
+            void Hide();
+            string GetName();
+        }
+
+        public static void Activate(IWheel wheel)
+        {
+            if (!wheel.IsVisible())
+                return;
+
+            foreach (var w in wheels)
+            {
+                if (!wheel.Equals(w))
+                {
+                    w.Hide();
+                }
+            }
         }
 
         public static bool AddWheel(IWheel wheel)
@@ -22,12 +50,22 @@ namespace EquipWheel
             return wheels.Remove(wheel);
         }
 
-        public static bool OnTop(IWheel wheel)
+        public static bool BestMatchDown(IWheel wheel)
         {
             if (!wheels.Contains(wheel))
                 return false;
 
-            var result = wheels.OrderByDescending(w => w.GetKeyCount()).FirstOrDefault();
+            var result = wheels.OrderByDescending(w => w.GetKeyCountDown()).FirstOrDefault();
+
+            return wheel.Equals(result);
+        }
+
+        public static bool BestMatchPressed(IWheel wheel)
+        {
+            if (!wheels.Contains(wheel))
+                return false;
+
+            var result = wheels.OrderByDescending(w => w.GetKeyCountPressed()).FirstOrDefault();
 
             return wheel.Equals(result);
         }

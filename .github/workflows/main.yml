@@ -133,12 +133,6 @@ jobs:
         
       - name: Update const string BepinEx version field
         run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' ${{matrix.mod}}/EquipWheel.cs
-    
-      - name: Change String Case
-        id: lower
-        uses: ASzc/change-string-case-action@v2
-        with:
-          string: ${{matrix.mod}}
 
       - name: Build and Create the package
         run: xbuild ValheimMod.sln /t:${{matrix.mod}} /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
