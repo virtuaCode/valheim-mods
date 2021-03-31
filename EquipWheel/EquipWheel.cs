@@ -475,8 +475,8 @@ namespace EquipWheelFour
 
         private void LoadAssets()
         {
-            Assembly asm = Assembly.GetExecutingAssembly();
-            Stream emotewheel = asm.GetManifestResourceStream(asm.GetName().Name + ".res.selectionwheel");
+            Assembly asm = Assembly.GetAssembly(typeof(global::EquipWheel.EquipWheel));
+            Stream emotewheel = asm.GetManifestResourceStream("EquipWheel.res.selectionwheel");
 
             using (MemoryStream mStream = new MemoryStream())
             {
