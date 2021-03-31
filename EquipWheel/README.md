@@ -45,6 +45,11 @@ A config file will be created after running the game once while the mod is insta
 
 ## Change Log
 
+- Version 1.3.2
+    - Fix problem with overlapping key bindings (e.g. F and F+Shift)
+    - Fix ordering of shields when auto-equipping
+    - Fix config problem for shield auto-equipping
+    - Remove some config options for additional equip wheels (Options now inherited from main equip wheel)
 - Version 1.3.1
     - Add protected bindings
 - Version 1.3.0
