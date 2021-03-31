@@ -132,7 +132,7 @@ jobs:
           echo ::set-output name=mod::$(echo ${GITHUB_REF:11} | cut -d'-' -f 2 | cat)
         
       - name: Update const string BepinEx version field
-        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' ${{matrix.mod}}/EquipWheel.cs
+        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' EquipWheel/EquipWheel.cs
 
       - name: Build and Create the package
         run: xbuild ValheimMod.sln /t:${{matrix.mod}} /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
