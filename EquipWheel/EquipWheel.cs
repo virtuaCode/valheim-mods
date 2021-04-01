@@ -557,6 +557,7 @@ namespace EquipWheelFour
         public readonly float INNER_DIAMETER = 340f;
 
         private GameObject cursor;
+        private Text text;
         private GameObject highlight;
         private readonly ItemDrop.ItemData[] items = new ItemDrop.ItemData[8];
         private HotkeyBar hotKeyBar;
@@ -682,6 +683,34 @@ namespace EquipWheelFour
             var mat = highlight.GetComponent<Image>().material;
             mat.SetFloat("_Degree", ANGLE_STEP);
 
+            var textGo = new GameObject("Text");
+            var textRect = textGo.AddComponent<RectTransform>();
+            textRect.SetParent(transform);
+            textRect.sizeDelta = new Vector2(1000, 100);
+            textRect.anchoredPosition = new Vector2(0, 450);
+
+            text = textGo.AddComponent<Text>();
+            text.color = EquipWheel.GetHighlightColor;
+
+            EquipWheel.HighlightColor.SettingChanged += (sender, args) => text.color = EquipWheel.GetHighlightColor;
+
+            text.alignment = TextAnchor.UpperCenter;
+            text.fontSize = 60;
+
+            foreach (var font in Resources.FindObjectsOfTypeAll<Font>())
+            {
+                if (font.name == "AveriaSerifLibre-Bold")
+                {
+                    text.font = font;
+                    break;
+                }
+            }
+
+            var outline = textGo.AddComponent<Outline>();
+            outline.effectDistance = new Vector2(1, -1);
+            outline.effectColor = Color.black;
+
+            textGo.SetActive(false);
         }
 
         private void Start()
@@ -824,7 +853,16 @@ namespace EquipWheelFour
                 if (CurrentItem != null)
                 {
                     InventoryGui.instance.m_moveItemEffects.Create(base.transform.position, Quaternion.identity, null, 1f);
+                    text.gameObject.SetActive(true);
+                    text.text = Localization.instance.Localize(CurrentItem.m_shared.m_name);
                 }
+                else
+                {
+                    text.gameObject.SetActive(false);
+                }
+
+
+
                 previous = Current;
             }
 

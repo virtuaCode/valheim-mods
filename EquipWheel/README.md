@@ -45,6 +45,8 @@ A config file will be created after running the game once while the mod is insta
 
 ## Change Log
 
+- Version 1.3.3
+    - Add label for selected item
 - Version 1.3.2
     - Fix problem with overlapping key bindings (e.g. F and F+Shift)
     - Fix ordering of shields when auto-equipping
