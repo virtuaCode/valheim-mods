@@ -84,11 +84,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Awake_Patch.cs" />
     <Compile Include="EmoteWheel.cs" />
-    <Compile Include="IsVisible_Patch.cs" />
+    <Compile Include="Patcher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="UpdateMouseCapture_Patch.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="res\selectionwheel" />

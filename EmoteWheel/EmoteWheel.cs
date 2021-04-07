@@ -9,50 +9,62 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace EmoteWheel
 {
     [BepInPlugin("virtuacode.valheim.emotewheel", "Emote Wheel Mod", "0.0.1")]
     public class EmoteWheel : BaseUnityPlugin
     {
-        private Harmony harmony;
-        public static ConfigEntry<string> Hotkey;
+        private static Harmony harmony;
+        public static ConfigEntry<KeyboardShortcut> Hotkey;
         public static ConfigEntry<bool> TriggerOnRelease;
         public static ConfigEntry<bool> TriggerOnClick;
         public static ConfigEntry<Color> HighlightColor;
         public static ConfigEntry<float> GuiScale;
+        public static ConfigEntry<int> IgnoreJoyStickDuration;
+        public static ConfigEntry<bool> ToggleMenu;
+        public static ConfigEntry<bool> ModEnabled;
+        public static ConfigEntry<string> ProtectedBindings;
+        public static ConfigEntry<KeyboardShortcut> HotkeyGamepad;
 
-        public static ManualLogSource MyLogger;
+        public static KeyCode replacedKey = KeyCode.None;
+        public static List<string> replacedButtons = new List<string>();
 
-        public static Color GetHighlightColor
-        {
-            get
-            {
-                return HighlightColor.Value;
-            }
-        }
+        public static ManualLogSource MyLogger = BepInEx.Logging.Logger.CreateLogSource(Assembly.GetExecutingAssembly().GetName().Name);
+
+        public static float JoyStickIgnoreTime = 0;
+        public static bool inventoryVisible = false;
+
+        public static Color GetHighlightColor => HighlightColor.Value;
 
         public static void Log(string msg)
         {
-            if (MyLogger == null)
-                return;
-
-            MyLogger.LogInfo(msg);
+            MyLogger?.LogInfo(msg);
         }
 
         public static void LogErr(string msg)
         {
-            if (MyLogger == null)
-                return;
-
-            MyLogger.LogError(msg);
+            MyLogger?.LogError(msg);
         }
         public static void LogWarn(string msg)
         {
-            if (MyLogger == null)
-                return;
+            MyLogger?.LogWarning(msg);
+        }
 
-            MyLogger.LogWarning(msg);
+        public static bool CanOpenMenu
+        {
+            get
+            {
+                Player localPlayer = Player.m_localPlayer;
+
+                bool canOpenMenu = !(localPlayer == null || localPlayer.IsDead() || localPlayer.InCutscene() || localPlayer.IsTeleporting()) &&
+                                   (!inventoryVisible) && (Chat.instance == null || !Chat.instance.HasFocus()) &&
+                                   !global::Console.IsVisible() && !Menu.IsVisible() && TextViewer.instance != null &&
+                                   !TextViewer.instance.IsVisible() && !GameCamera.InFreeFly() && !Minimap.IsOpen();
+                return canOpenMenu;
+            }
         }
 
         public static bool IsDedicated()
@@ -74,20 +86,148 @@ namespace EmoteWheel
                 return;
             }
 
-            Hotkey = Config.Bind("General", "Hotkey", "t", "Hotkey for opening emote wheel menu");
+
+            ModEnabled = Config.Bind("General", "ModEnabled", true, "Enable mod when value is true");
+            Hotkey = Config.Bind("General", "Hotkey", KeyboardShortcut.Deserialize("T"), "Hotkey for opening emote wheel menu");
+            HotkeyGamepad = Config.Bind("Input", "HotkeyGamepad", KeyboardShortcut.Deserialize("JoystickButton2"),
+                "Hotkey on gamepads for opening emote wheel menu");
+            ProtectedBindings = Config.Bind("Input", "ProtectedBindings",
+                "JoyTabLeft JoyTabRight JoyButtonA JoyButtonB JoyButtonX JoyButtonY",
+                "Button bindings that should never be overriden");
             TriggerOnRelease = Config.Bind("General", "TriggerOnRelease", true, "Releasing the Hotkey will trigger the selected emote");
             TriggerOnClick = Config.Bind("General", "TriggerOnClick", false, "Click with left mouse button will trigger the selected emote");
+            ToggleMenu = Config.Bind("Input", "ToggleMenu", false,
+                "When enabled the emote wheel will toggle between hidden/visible when the hotkey was pressed");
             HighlightColor = Config.Bind("Appereance", "HighlightColor", new Color(1, 0.82f, 0), "Color of the highlighted selection");
             GuiScale = Config.Bind("Appereance", "GuiScale", 0.75f, "Scale factor of the user interface");
+            IgnoreJoyStickDuration = Config.Bind("Input", "IgnoreJoyStickDuration", 300,
+                new ConfigDescription("Duration in milliseconds for ignoring left joystick input after button release",
+                    new AcceptableValueRange<int>(0, 2000)));
 
-            harmony = Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
-            Log(typeof(EmoteWheel).Name + " Loaded!");
+            if (!ModEnabled.Value)
+            {
+                LogWarn("Mod not loaded because it was disabled via config.");
+                return;
+            }
+
+            HotkeyGamepad.SettingChanged += (sender, args) => { RestoreGamepadButton(); ReplaceGamepadButton(); };
+
+
+            harmony = Harmony.CreateAndPatchAll(typeof(Patcher));
+            Log(nameof(EmoteWheel) + " Loaded!");
         }
 
         void OnDestroy()
         {
             harmony?.UnpatchAll();
         }
+
+        public static void ReplaceGamepadButton()
+        {
+            if (ZInput.instance != null)
+            {
+                var buttons = (Dictionary<string, ZInput.ButtonDef>)typeof(ZInput).GetField("m_buttons", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(ZInput.instance);
+                var bindings = ParseTokens(ProtectedBindings.Value);
+
+                foreach (KeyValuePair<string, ZInput.ButtonDef> entry in buttons)
+                {
+                    var keyCode = entry.Value.m_key;
+
+                    if (Array.IndexOf(bindings, entry.Key) > -1)
+                        continue;
+
+                    if (keyCode != KeyCode.None && keyCode == HotkeyGamepad.Value.MainKey)
+                    {
+                        replacedButtons.Add(entry.Key);
+                        replacedKey = keyCode;
+
+                        ZInput.instance.Setbutton(entry.Key, KeyCode.None);
+                    }
+                }
+            }
+        }
+
+        public static void RestoreGamepadButton()
+        {
+            if (ZInput.instance != null)
+            {
+                if (replacedButtons.Count > 0)
+                {
+                    foreach (var button in replacedButtons)
+                    {
+                        ZInput.instance.Setbutton(button, replacedKey);
+
+                    }
+                    replacedButtons.Clear();
+                    replacedKey = KeyCode.None;
+                }
+            }
+        }
+
+        public static bool IsShortcutDown
+        {
+            get
+            {
+                var shortcut = ZInput.IsGamepadActive() ? HotkeyGamepad.Value : Hotkey.Value;
+                var mainKey = shortcut.MainKey;
+                var modifierKeys = shortcut.Modifiers.ToArray();
+
+                return Input.GetKeyDown(mainKey) && modifierKeys.All(Input.GetKey);
+            }
+        }
+
+        public static bool IsShortcutUp
+        {
+            get
+            {
+                var shortcut = ZInput.IsGamepadActive() ? HotkeyGamepad.Value : Hotkey.Value;
+                var mainKey = shortcut.MainKey;
+                var modifierKeys = shortcut.Modifiers.ToArray();
+
+                return Input.GetKeyUp(mainKey) || modifierKeys.Any(Input.GetKeyUp);
+            }
+        }
+
+        public static bool IsShortcutPressed
+        {
+            get
+            {
+                var shortcut = ZInput.IsGamepadActive() ? HotkeyGamepad.Value : Hotkey.Value;
+                var mainKey = shortcut.MainKey;
+
+                var modifierKeys = shortcut.Modifiers.ToArray();
+
+                return Input.GetKey(mainKey) && modifierKeys.All(Input.GetKey);
+            }
+        }
+
+        public static void ParseNames(string value, ref string[] arr)
+        {
+            if (ObjectDB.instance == null)
+                return;
+
+            var names = ParseTokens(value);
+            var ids = new List<string>();
+
+            foreach (var name in names)
+            {
+                var prefab = ObjectDB.instance.GetItemPrefab(name);
+                if (prefab != null)
+                {
+                    var item = prefab.GetComponent<ItemDrop>();
+                    ids.Add(item.m_itemData.m_shared.m_name);
+                }
+            }
+
+            arr = ids.Distinct().ToArray();
+        }
+
+        public static string[] ParseTokens(string value)
+        {
+            char[] delimiterChars = { ' ', ',', '.', ':', '\t' };
+            return value.Split(delimiterChars, StringSplitOptions.RemoveEmptyEntries);
+        }
+
     }
 
     public class EmoteGui : MonoBehaviour
@@ -96,7 +236,7 @@ namespace EmoteWheel
         public static AssetBundle assets;
 
         public static bool visible = false;
-        public static bool inventoryVisible = false;
+        public int toggleVisible = 0;
 
 
         void Awake()
@@ -108,7 +248,7 @@ namespace EmoteWheel
 
             var go = Instantiate<GameObject>(uiPrefab, new Vector3(0, 0, 0), transform.rotation, rect);
             ui = go.AddComponent<EmoteWheelUI>();
-
+             
             go.SetActive(false);
             visible = false;
 
@@ -124,6 +264,13 @@ namespace EmoteWheel
             rect.anchorMax = new Vector2(1f, 1f);
             rect.anchorMin = new Vector2(0f, 0f);
             rect.anchoredPosition = new Vector2(0, 0);
+
+            if (Hud.instance == null)
+                return;
+
+
+            EmoteWheel.RestoreGamepadButton();
+            EmoteWheel.ReplaceGamepadButton();
         }
 
 
@@ -139,55 +286,63 @@ namespace EmoteWheel
             }
         }
 
+        public void Hide()
+        {
+            ui.gameObject.SetActive(false);
+            visible = false;
+            toggleVisible = 0;
+        }
+
+
         private void Update()
         {
 
-            Player localPlayer = Player.m_localPlayer;
-            if (localPlayer == null || localPlayer.IsDead() || localPlayer.InCutscene() || localPlayer.IsTeleporting())
+            if (EmoteWheel.JoyStickIgnoreTime > 0)
+                EmoteWheel.JoyStickIgnoreTime -= Time.deltaTime;
+
+            if (!EmoteWheel.CanOpenMenu)
             {
-                ui.gameObject.SetActive(false);
-                visible = false;
+                Hide();
                 return;
             }
 
+            if (EmoteWheel.IsShortcutDown && EmoteWheel.ToggleMenu.Value && toggleVisible < 2)
+                toggleVisible++;
 
+            var toggleDown =
+                EmoteWheel.IsShortcutDown && EmoteWheel.ToggleMenu.Value && toggleVisible == 2;
+            var hotkeyRelease = EmoteWheel.IsShortcutUp && !EmoteWheel.ToggleMenu.Value;
 
-            bool canOpenMenu = (!EmoteGui.inventoryVisible) && (Chat.instance == null || !Chat.instance.HasFocus()) && !global::Console.IsVisible() && !Menu.IsVisible() && TextViewer.instance && !TextViewer.instance.IsVisible() && !localPlayer.InCutscene() && !GameCamera.InFreeFly() && !Minimap.IsOpen();
-            if (!canOpenMenu)
+            if ((EmoteWheel.ToggleMenu.Value && toggleVisible > 0 && !toggleDown) || (EmoteWheel.IsShortcutPressed &&  !EmoteWheel.ToggleMenu.Value))
             {
-                ui.gameObject.SetActive(false);
-                visible = false;
-                return;
-            }
 
-            if (Input.GetKey(EmoteWheel.Hotkey.Value))
-            {
                 ui.gameObject.SetActive(true);
                 visible = true;
 
-                if (EmoteWheel.TriggerOnClick.Value && Input.GetMouseButtonDown(0))
+                if (EmoteWheel.TriggerOnClick.Value && (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.JoystickButton0)))
                 {
-
                     if (ui.CurrentEmote != null)
                     {
-                        PlayEmote(ui.CurrentEmote);
+                       PlayEmote(ui.CurrentEmote);
                     }
-
                 }
-                return;
 
+                if (!toggleDown)
+                    return;
             }
 
-            if (EmoteWheel.TriggerOnRelease.Value && Input.GetKeyUp(EmoteWheel.Hotkey.Value))
+
+            if (EmoteWheel.TriggerOnRelease.Value && (toggleDown || hotkeyRelease))
             {
                 if (ui.CurrentEmote != null)
                 {
-                    PlayEmote(ui.CurrentEmote);
+                   PlayEmote(ui.CurrentEmote);
                 }
+
+                EmoteWheel.JoyStickIgnoreTime = EmoteWheel.IgnoreJoyStickDuration.Value / 1000f;
             }
 
-            visible = false;
-            ui.gameObject.SetActive(false);
+            Hide();
         }
 
         private void PlayEmote(string emote)
@@ -221,38 +376,22 @@ namespace EmoteWheel
             typeof(Player).GetMethod("StopEmote", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(player, new object[] { });
         }
     }
-
-
-    public class CutoutMask : Image
-    {
-        public override Material materialForRendering
-        {
-            get
-            {
-                Material material = new Material(base.materialForRendering);
-                material.SetInt("_StencilComp", (int)CompareFunction.NotEqual);
-                return material;
-            }
-        }
-    }
-
-
-
+    
     public class EmoteWheelUI : MonoBehaviour
     {
         /* Constants */
-        private static readonly float ANGLE_STEP = 360f / 7f;
-        private static readonly float INNER_DIAMETER = 430f;
+        public readonly float ANGLE_STEP = 360f / 7f;
+        public readonly float INNER_DIAMETER = 340f;
 
         [System.Serializable]
         private class Item
         {
 
             public string name;
-            public Sprite icon;
             public string command;
         }
 
+        private Font font;
         private GameObject cursor;
         private GameObject highlight;
         private GameObject textPrefab;
@@ -268,10 +407,25 @@ namespace EmoteWheel
         {
             get
             {
-                if (MouseInCenter)
+                if ((!ZInput.IsGamepadActive() && MouseInCenter) || JoyStickInCenter)
                     return -1;
 
-                return Mod((int)(Mathf.Round((Angle) / ANGLE_STEP)), items.Length);
+                int index = Mod((int)Mathf.Round(Angle / ANGLE_STEP), 7);
+
+                if (index >= items.Length)
+                    return -1;
+
+                return index;
+            }
+        }
+
+        public bool JoyStickInCenter
+        {
+            get
+            {
+                var x = ZInput.GetJoyLeftStickX();
+                var y = ZInput.GetJoyLeftStickY();
+                return ZInput.IsGamepadActive() && x == 0 && y == 0;
             }
         }
 
@@ -290,7 +444,7 @@ namespace EmoteWheel
         {
             get
             {
-                float radius = INNER_DIAMETER / 2 * EmoteWheel.GuiScale.Value;
+                float radius = INNER_DIAMETER / 2 * gameObject.transform.lossyScale.x;
                 var dir = Input.mousePosition - cursor.transform.position;
                 return dir.magnitude <= radius;
             }
@@ -300,11 +454,22 @@ namespace EmoteWheel
         {
             get
             {
+                if (ZInput.IsGamepadActive())
+                {
+                    var x = ZInput.GetJoyLeftStickX();
+                    var y = -ZInput.GetJoyLeftStickY();
+
+                    if (x != 0 || y != 0)
+                        return Mathf.Atan2(y, x) * Mathf.Rad2Deg - 90;
+                }
+
+
                 var dir = Input.mousePosition - cursor.transform.position;
                 var angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg - 90;
                 return angle;
             }
         }
+
         public IEnumerator FlashCoroutine(float aTime)
         {
             var color = EmoteWheel.GetHighlightColor;
@@ -328,7 +493,7 @@ namespace EmoteWheel
             rect.anchoredPosition = new Vector3(0, 300, 0);
             text.fontSize = 40;
             text.color = Color.white;
-            var font = Resources.GetBuiltinResource(typeof(Font), "Arial.ttf") as Font;
+            //var font = Resources.GetBuiltinResource(typeof(Font), "Arial.ttf") as Font;
             text.font = font;
             text.fontStyle = UnityEngine.FontStyle.Bold;
             text.alignByGeometry = true;
@@ -349,6 +514,15 @@ namespace EmoteWheel
 
         private void Awake()
         {
+            foreach (var font in Resources.FindObjectsOfTypeAll<Font>())
+            {
+                if (font.name == "AveriaSerifLibre-Bold")
+                {
+                    this.font = font;
+                    break;
+                }
+            }
+
             cursor = transform.Find("Cursor").gameObject;
             highlight = transform.Find("Highlight").gameObject;
             textPrefab = BuildTextPrefab();
@@ -388,6 +562,7 @@ namespace EmoteWheel
             highlight.GetComponent<Image>().color = EmoteWheel.GetHighlightColor;
             var scale = EmoteWheel.GuiScale.Value;
             GetComponent<RectTransform>().localScale = new Vector3(scale, scale, scale);
+            Update();
         }
 
         void OnDisable()
