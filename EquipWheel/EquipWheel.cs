@@ -476,11 +476,11 @@ namespace EquipWheelFour
         private void LoadAssets()
         {
             Assembly asm = Assembly.GetAssembly(typeof(global::EquipWheel.EquipWheel));
-            Stream emotewheel = asm.GetManifestResourceStream("EquipWheel.res.selectionwheel");
+            Stream wheelAssets = asm.GetManifestResourceStream("EquipWheel.res.selectionwheel");
 
             using (MemoryStream mStream = new MemoryStream())
             {
-                emotewheel.CopyTo(mStream);
+                wheelAssets.CopyTo(mStream);
                 assets = AssetBundle.LoadFromMemory(mStream.ToArray());
             }
         }
