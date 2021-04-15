@@ -9,7 +9,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     outputs: 
-      release_url: ${{steps.share_release_url.url}}
+      release_url: ${{steps.share_release_url.outputs.url}}
 
     steps:
       - uses: actions/checkout@v2
