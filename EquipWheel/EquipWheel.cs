@@ -8,9 +8,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using EquipWheel;
+using BepInEx.Bootstrap;
 using UnityEngine;
 using UnityEngine.UI;
+using EquipWheel;
 
 #if EQUIPWHEEL_ONE
 namespace EquipWheel
@@ -46,7 +47,7 @@ namespace EquipWheelFour
 #if EQUIPWHEEL_ONE
         public static ConfigEntry<bool> EquipWhileRunning;
         public static ConfigEntry<bool> AutoEquipShield;
-        public static ConfigEntry<bool> HideHotkeyBar;       
+        public static ConfigEntry<bool> HideHotkeyBar;
         public static ConfigEntry<int> IgnoreJoyStickDuration;
 #endif
         public static ConfigEntry<bool> TriggerOnRelease;
@@ -68,6 +69,7 @@ namespace EquipWheelFour
         public static ConfigEntry<string> ItemNames;
         public static ConfigEntry<string> ItemNamesIgnored;
         public static ConfigEntry<string> ProtectedBindings;
+        public static ConfigEntry<bool> UseRarityColoring;
 
         private static EquipWheel instance;
         public static string[] itemNames = new string[] { };
@@ -76,6 +78,154 @@ namespace EquipWheelFour
         public static List<string> replacedButtons = new List<string>();
         public static float JoyStickIgnoreTime = 0;
         public static EquipGui Gui;
+        public static EpicLootWrapper epicLootWrapper;
+
+
+
+
+        public class EpicLootWrapper
+        {
+            private Assembly EpicLootAssembly;
+            private Type ItemBackgroundHelper;
+            private Type EpicLoot;
+            private Type ItemDataExtensions;
+
+            private MethodInfo CreateAndGetMagicItemBackgroundImage;
+            private MethodInfo GetMagicItemBgSprite;
+            private MethodInfo UseMagicBackground;
+            private MethodInfo GetRarityColor;
+            private MethodInfo GetDecoratedName;
+
+
+            private EpicLootWrapper()
+            {
+            }
+
+            public static EpicLootWrapper CreateInstance(PluginInfo pluginInfo)
+            {
+                var wrapper = new EpicLootWrapper();
+                var assembly = pluginInfo.Instance.GetType().Assembly;
+
+                if (assembly == null)
+                {
+                    throw new Exception("Assembly for EpicLoot cannot be resolved");
+                }
+
+                wrapper.EpicLootAssembly = assembly;
+
+
+                var types = wrapper.EpicLootAssembly.GetExportedTypes();
+                foreach (var t in types)
+                {
+                    if (t.FullName == "EpicLoot.ItemBackgroundHelper")
+                        wrapper.ItemBackgroundHelper = t;
+
+                    if (t.FullName == "EpicLoot.EpicLoot")
+                        wrapper.EpicLoot = t;
+
+                    if (t.FullName == "EpicLoot.ItemDataExtensions")
+                        wrapper.ItemDataExtensions = t;
+                }
+
+                if (wrapper.ItemBackgroundHelper == null)
+                    throw new Exception("Type EpicLoot.ItemBackgroundHelper cannot be resolved");
+
+                if (wrapper.EpicLoot == null)
+                    throw new Exception("Type EpicLoot.EpicLoot cannot be resolved");
+
+                if (wrapper.ItemDataExtensions == null)
+                    throw new Exception("Type EpicLoot.ItemDataExtensions cannot be resolved");
+
+                wrapper.CreateAndGetMagicItemBackgroundImage = wrapper.ItemBackgroundHelper.GetMethod("CreateAndGetMagicItemBackgroundImage",
+                  new Type[] { typeof(GameObject), typeof(GameObject), typeof(bool) });
+
+                if (wrapper.CreateAndGetMagicItemBackgroundImage == null)
+                    throw new Exception("Method CreateAndGetMagicItemBackgroundImage cannot be resolved");
+
+                wrapper.GetMagicItemBgSprite = wrapper.EpicLoot.GetMethod("GetMagicItemBgSprite", new Type[] { });
+
+                if (wrapper.GetMagicItemBgSprite == null)
+                    throw new Exception("Method GetMagicItemBgSprite cannot be resolved");
+
+                wrapper.UseMagicBackground = wrapper.ItemDataExtensions.GetMethod("UseMagicBackground", new Type[] { typeof(ItemDrop.ItemData) });
+
+                if (wrapper.UseMagicBackground == null)
+                    throw new Exception("Method UseMagicBackground cannot be resolved");
+
+                wrapper.GetRarityColor = wrapper.ItemDataExtensions.GetMethod("GetRarityColor", new Type[] { typeof(ItemDrop.ItemData) });
+
+                if (wrapper.GetRarityColor == null)
+                    throw new Exception("Method GetRarityColor cannot be resolved");
+
+                wrapper.GetDecoratedName = wrapper.ItemDataExtensions.GetMethod("GetDecoratedName", new Type[] { typeof(ItemDrop.ItemData), typeof(string) });
+
+                if (wrapper.GetDecoratedName == null)
+                    throw new Exception("Method GetDecoratedName cannot be resolved");
+
+
+
+                return wrapper;
+
+            }
+
+            public string GetItemName(ItemDrop.ItemData item, Color color)
+            {
+                return (string)GetDecoratedName.Invoke(null, new object[] { item, "#" + ColorUtility.ToHtmlStringRGB(color) });
+            }
+
+            public string GetItemName(ItemDrop.ItemData item)
+            {
+                return GetItemName(item, EquipWheel.GetHighlightColor);
+            }
+
+            public Color GetItemColor(ItemDrop.ItemData item)
+            {
+                return (Color)GetRarityColor.Invoke(null, new object[] { item });
+            }
+
+            public void ModifyElement(EquipWheelUI.ElementData element, ItemDrop.ItemData item)
+            {
+                if (element == null || item == null)
+                    return;
+
+                var magicItemTransform = element.m_go.transform.Find("magicItem");
+                if (magicItemTransform != null)
+                {
+                    var mi = magicItemTransform.GetComponent<Image>();
+                    if (mi != null)
+                    {
+                        mi.enabled = false;
+                    }
+                }
+
+                var setItemTransform = element.m_go.transform.Find("setItem");
+                if (setItemTransform != null)
+                {
+                    var setItem = setItemTransform.GetComponent<Image>();
+                    if (setItem != null)
+                    {
+                        setItem.enabled = false;
+                    }
+                }
+
+                var magicItem = (Image)CreateAndGetMagicItemBackgroundImage.Invoke(null, new object[] { element.m_go, element.m_equiped.gameObject, true });
+
+                if ((bool)UseMagicBackground.Invoke(null, new object[] { item }))
+                {
+                    magicItem.enabled = true;
+                    magicItem.sprite = (Sprite)GetMagicItemBgSprite.Invoke(null, new object[] { });
+                    magicItem.color = (Color)GetRarityColor.Invoke(null, new object[] { item });
+                }
+
+                var setItem2 = element.m_go.transform.Find("setItem");
+                if (setItem2 != null && !string.IsNullOrEmpty(item.m_shared.m_setName))
+                {
+                    var img = setItem2.GetComponent<Image>();
+                    img.enabled = true;
+                }
+            }
+        }
+
 
         public static Color GetHighlightColor => HighlightColor.Value;
 
@@ -88,7 +238,7 @@ namespace EquipWheelFour
         }
 
         public static void Log(string msg)
-        { 
+        {
             MyLogger?.LogInfo(msg);
         }
 
@@ -149,10 +299,10 @@ namespace EquipWheelFour
             /* Appereance */
             HighlightColor = Config.Bind("Appereance", "HighlightColor", new Color(0.414f, 0.734f, 1f),
                 "Color of the highlighted selection");
-            GuiScale = Config.Bind("Appereance", "GuiScale", 0.75f, "Scale factor of the user interface");
+            GuiScale = Config.Bind("Appereance", "GuiScale", 0.5f, "Scale factor of the user interface");
 
 #if EQUIPWHEEL_ONE
-             HideHotkeyBar = Config.Bind("Appereance", "HideHotkeyBar", false, "Hides the top-left Hotkey Bar");
+            HideHotkeyBar = Config.Bind("Appereance", "HideHotkeyBar", false, "Hides the top-left Hotkey Bar");
 
             /* Misc */
             EquipWhileRunning = Config.Bind("Misc", "EquipWhileRunning", true, "Allow to equip weapons while running");
@@ -218,6 +368,23 @@ namespace EquipWheelFour
 
             WheelManager.AddWheel(this);
 
+            try
+            {
+                var epicloot = Chainloader.PluginInfos["randyknapp.mods.epicloot"];
+                epicLootWrapper = EpicLootWrapper.CreateInstance(epicloot);
+                UseRarityColoring = Config.Bind("Appereance", "UseRarityColoring", true, "When enabled, the highlight color will be set to the rarity color of the selected item.");
+                Log("Epicloot Mod installed. Applied compatibility patch.");
+            }
+            catch (KeyNotFoundException)
+            {
+                Log("Epicloot Mod not installed. Skipped compatibility patch.");
+            }
+            catch (Exception e)
+            {
+                LogErr(e.Message);
+                LogErr("Failed to initialize EpicLootWrapper. Probably a compatibility issue. Please inform the mod creator of EquipWheel about this issue! (https://www.nexusmods.com/valheim/mods/536)");
+            }
+
             Log(this.GetType().Namespace + " Loaded!");
         }
 
@@ -251,7 +418,7 @@ namespace EquipWheelFour
         public static void TryHideHotkeyBar()
         {
 #if EQUIPWHEEL_ONE
-                        HotkeyBar hotKeyBar = Hud.instance.transform.Find("hudroot/HotKeyBar").GetComponent<HotkeyBar>();
+            HotkeyBar hotKeyBar = Hud.instance.transform.Find("hudroot/HotKeyBar").GetComponent<HotkeyBar>();
 
             if (hotKeyBar == null)
                 return;
@@ -514,7 +681,7 @@ namespace EquipWheelFour
 
             if ((EquipWheel.ToggleMenu.Value && toggleVisible > 0 && !toggleDown) || (EquipWheel.IsShortcutPressed && (EquipWheel.BestMatchPressed || EquipWheel.BestMatchDown) && !EquipWheel.ToggleMenu.Value))
             {
-                
+
                 ui.gameObject.SetActive(true);
                 visible = true;
                 WheelManager.Activate(EquipWheel.Instance);
@@ -568,7 +735,7 @@ namespace EquipWheelFour
         private readonly List<ElementData> m_elements = new List<ElementData>();
         private GameObject m_elementPrefab;
 
-        private class ElementData
+        public class ElementData
         {
             public bool m_used;
             public GameObject m_go;
@@ -696,6 +863,7 @@ namespace EquipWheelFour
 
             text.alignment = TextAnchor.UpperCenter;
             text.fontSize = 60;
+            text.supportRichText = true;
 
             foreach (var font in Resources.FindObjectsOfTypeAll<Font>())
             {
@@ -854,24 +1022,52 @@ namespace EquipWheelFour
                 {
                     InventoryGui.instance.m_moveItemEffects.Create(base.transform.position, Quaternion.identity, null, 1f);
                     text.gameObject.SetActive(true);
-                    text.text = Localization.instance.Localize(CurrentItem.m_shared.m_name);
+
+                    if (EquipWheel.epicLootWrapper != null)
+                    {
+                        var itemColor = EquipWheel.epicLootWrapper.GetItemColor(CurrentItem);
+
+                        if (itemColor.Equals(Color.white) || !EquipWheel.UseRarityColoring.Value)
+                            itemColor = EquipWheel.GetHighlightColor;
+
+
+                        text.text = Localization.instance.Localize(EquipWheel.epicLootWrapper.GetItemName(CurrentItem, itemColor));
+                    } else
+                    {
+                        text.text = Localization.instance.Localize(CurrentItem.m_shared.m_name);
+                    }
                 }
                 else
                 {
                     text.gameObject.SetActive(false);
                 }
-
-
-
                 previous = Current;
             }
 
             highlight.SetActive(CurrentItem != null);
 
+
+            var color = CurrentItem == null ? new Color(0, 0, 0, 0.5f) : EquipWheel.GetHighlightColor;
+
+            if (CurrentItem != null && EquipWheel.epicLootWrapper != null)
+            {
+                var itemColor = EquipWheel.epicLootWrapper.GetItemColor(CurrentItem);
+
+                if (!itemColor.Equals(Color.white) && EquipWheel.UseRarityColoring.Value)
+                {
+                    color = itemColor;
+                    highlight.GetComponent<Image>().color = color;
+                } else
+                {
+                    highlight.GetComponent<Image>().color = EquipWheel.GetHighlightColor;
+                }
+            }
+
             var images = cursor.GetComponentsInChildren<Image>(true);
             foreach (var image in images)
             {
-                image.color = CurrentItem == null ? new Color(0, 0, 0, 0.5f) : EquipWheel.GetHighlightColor;
+
+                image.color = color;
 
                 if (image.gameObject.name == "Image")
                 {
@@ -898,6 +1094,7 @@ namespace EquipWheelFour
 
             return count;
         }
+
 
         /* Modified UpdateIcons Function from HotkeyBar class */
         private void UpdateIcons(Player player, bool forceUpdate = false)
@@ -947,8 +1144,6 @@ namespace EquipWheelFour
                         elementData3.m_go.transform.Find("binding").GetComponent<Text>().enabled = false;
                     }
 
-
-
                     this.m_elements.Add(elementData3);
                 }
             }
@@ -993,6 +1188,9 @@ namespace EquipWheelFour
                 {
                     elementData5.m_amount.gameObject.SetActive(false);
                 }
+
+                if (EquipWheel.epicLootWrapper != null)
+                    EquipWheel.epicLootWrapper.ModifyElement(elementData5, itemData2);
 
                 elem_index++;
             }
