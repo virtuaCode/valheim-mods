@@ -1,0 +1,10 @@
+{
+    "name": "MoreEquipWheels",
+    "version_number": "0.0.1",
+    "website_url": "https://github.com/virtuaCode/valheim-mods",
+    "description": "This is an extension mod for the EquipWheel mod. It adds 3 additional equip wheels to the game.",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.800",
+        "virtuaCode-EquipWheel-0.0.1"
+    ]
+}

@@ -8,6 +8,9 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    outputs: 
+      release_url: ${{steps.share_release_url.url}}
+
     steps:
       - uses: actions/checkout@v2
         with:
@@ -76,6 +79,10 @@ jobs:
           release_name: Release ${{steps.vars.outputs.mod}} ${{steps.vars.outputs.tag}}
           draft: false
           prerelease: false
+
+      - name: Share release url
+        id: share_release_url
+        run: echo "::set-output name=url::${{ steps.create_release.outputs.upload_url }}"
       
       - name: Upload Release Asset
         id: upload-thunderstore-asset 
@@ -83,7 +90,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+          upload_url: ${{ steps.create_release.outputs.upload_url }}  
           asset_path: ./${{steps.vars.outputs.mod}}.zip
           asset_name: ${{steps.vars.outputs.mod}}_thunderstore.zip
           asset_content_type: application/zip
@@ -95,7 +102,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+          upload_url: ${{ steps.create_release.outputs.upload_url }} 
           asset_path: ./${{steps.vars.outputs.mod}}_nexusmods.zip
           asset_name: ${{steps.vars.outputs.mod}}_nexusmods.zip
           asset_content_type: application/zip
@@ -139,4 +146,67 @@ jobs:
       
       - uses: actions/upload-artifact@v2
         with:
+          name: more-equipwheels
           path: ${{matrix.mod}}.dll
+
+  bundle-variants:
+    if: endsWith(github.ref, 'EquipWheel')
+    runs-on: ubuntu-latest
+    needs: 
+      - publish
+      - variants
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Get the Release version tag and mod name
+        id: vars
+        run: |
+          echo ::set-output name=tag::$(echo ${GITHUB_REF:11} | cut -d'-' -f 1 | cat)
+          echo ::set-output name=mod::$(echo ${GITHUB_REF:11} | cut -d'-' -f 2 | cat)
+
+      - name: Update const string version field (1/2)
+        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' MoreEquipWheels/manifest.json
+        
+      - name: Update const string version field (2/2)
+        run: sed -i 's/"virtuaCode-EquipWheel-0.0.1"/"virtuaCode-EquipWheel-${{steps.vars.outputs.tag}}"/g' MoreEquipWheels/manifest.json
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: more-equipwheels
+
+      - uses: papeloto/action-zip@v1
+        with:
+          files: EquipWheelTwo.dll EquipWheelThree.dll EquipWheelFour.dll MoreEquipWheels/icon.png MoreEquipWheels/manifest.json MoreEquipWheels/README.md
+          dest: More_EquipWheels_thunderstore.zip
+
+      - uses: papeloto/action-zip@v1
+        with:
+          files: EquipWheelTwo.dll EquipWheelThree.dll EquipWheelFour.dll
+          dest: More_EquipWheels_nexusmods.zip
+
+      - name: Upload Release Asset
+        id: upload-nexusmod-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.publish.outputs.release_url }}  
+          asset_path: ./More_EquipWheels_nexusmods.zip
+          asset_name: More_EquipWheels_nexusmods.zip
+          asset_content_type: application/zip
+
+      - name: Upload Release Asset
+        id: upload-thunderstore-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.publish.outputs.release_url }} 
+          asset_path: ./More_EquipWheels_thunderstore.zip
+          asset_name: More_EquipWheels_thunderstore.zip
+          asset_content_type: application/zip
+
+      
+
