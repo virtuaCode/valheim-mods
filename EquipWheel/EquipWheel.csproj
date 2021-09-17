@@ -88,6 +88,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="EpicLootWrapper.cs" />
     <Compile Include="EquipWheel.cs" />
     <Compile Include="Patcher.cs" />
     <Compile Include="WheelManager.cs" />

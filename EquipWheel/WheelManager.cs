@@ -7,7 +7,9 @@ namespace EquipWheel
     { 
 
         private static readonly HashSet<IWheel> wheels = new HashSet<IWheel>();
+        private static IWheel activeWheel;
         public static bool inventoryVisible = false;
+        
 
         public static bool AnyVisible
         {
@@ -38,6 +40,13 @@ namespace EquipWheel
                     w.Hide();
                 }
             }
+
+            activeWheel = wheel;
+        }
+        
+        public static bool IsActive(IWheel wheel)
+        {
+            return wheel.Equals(activeWheel);
         }
 
         public static bool AddWheel(IWheel wheel)
