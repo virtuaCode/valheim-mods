@@ -98,7 +98,7 @@ namespace EasyHarvest
                                     if (ContainsAny(collider.gameObject.name, _crops))
                                     {
                                         Log("Interact with plant: " + collider.gameObject.name);
-                                        component.Interact(__instance, false);
+                                        component.Interact(__instance, false, false);
                                     }
                                 }
                             }
