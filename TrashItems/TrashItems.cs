@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using BepInEx;
 using HarmonyLib;
@@ -9,8 +8,7 @@ using UnityEngine.Events;
 using System.Reflection;
 using System.IO;
 using BepInEx.Logging;
-using JetBrains.Annotations;
-using UnityEngine.Audio;
+
 using Random = UnityEngine.Random;
 
 namespace TrashItems
@@ -22,6 +20,8 @@ namespace TrashItems
         public static ConfigEntry<bool> ConfirmDialog;
         public static ConfigEntry<KeyboardShortcut> TrashHotkey;
         public static ConfigEntry<SoundEffect> Sfx;
+        public static ConfigEntry<Color> TrashColor;
+        public static ConfigEntry<string> TrashLabel;
         public static bool _clickedTrash = false;
         public static bool _confirmed = false;
         public static InventoryGui _gui;
@@ -31,6 +31,7 @@ namespace TrashItems
         public static AudioClip[] sounds = new AudioClip[3];
         public static Transform trash;
         public static AudioSource audio;
+        public static TrashButton trashButton;
 
         public static ManualLogSource MyLogger;
 
@@ -67,7 +68,11 @@ namespace TrashItems
             Sfx = Config.Bind<SoundEffect>("General", "SoundEffect", SoundEffect.Random,
                 "Sound effect when trashing items");
             TrashHotkey = Config.Bind<KeyboardShortcut>("Input", "TrashHotkey", KeyboardShortcut.Deserialize("Delete"), "Hotkey for destroying items");
+            TrashLabel = Config.Bind<string>("General", "TrashLabel", "Trash", "Label for the trash button");
+            TrashColor = Config.Bind<Color>("General", "TrashColor", new Color(1f, 0.8482759f, 0), "Color for the trash label");
 
+            TrashLabel.SettingChanged += (sender, args) => { if (trashButton != null) { trashButton.SetText(TrashLabel.Value); } };
+            TrashColor.SettingChanged += (sender, args) => { if (trashButton != null) { trashButton.SetColor(TrashColor.Value); } };
 
             Log(nameof(TrashItems) + " Loaded!");
             
@@ -124,7 +129,7 @@ namespace TrashItems
             _gui = InventoryGui.instance;
 
             trash = Instantiate(playerInventory.Find("Armor"), playerInventory);
-            trash.gameObject.AddComponent<TrashButton>();
+            trashButton = trash.gameObject.AddComponent<TrashButton>();
 
             var guiMixer = AudioMan.instance.m_masterMixer.FindMatchingGroups("GUI")[0];
 
@@ -151,15 +156,8 @@ namespace TrashItems
                 RectTransform rect = GetComponent<RectTransform>();
                 rect.anchoredPosition -= new Vector2(0, 78);
 
-                // Replace text and color
-                Transform tText = transform.Find("ac_text");
-                if (!tText)
-                {
-                    LogErr("ac_text not found!");
-                    return;
-                }
-                tText.GetComponent<Text>().text = "Trash";
-                tText.GetComponent<Text>().color = Color.red;
+                SetText(TrashLabel.Value);
+                SetColor(TrashColor.Value);
 
 
                 // Replace armor with trash icon
@@ -218,6 +216,28 @@ namespace TrashItems
 
                 canvas.overrideSorting = true;
                 canvas.sortingOrder = 1;
+            }
+
+            public void SetText(string text)
+            {
+                Transform tText = transform.Find("ac_text");
+                if (!tText)
+                {
+                    LogErr("ac_text not found!");
+                    return;
+                }
+                tText.GetComponent<Text>().text = text;
+            }
+
+            public void SetColor(Color color)
+            {
+                Transform tText = transform.Find("ac_text");
+                if (!tText)
+                {
+                    LogErr("ac_text not found!");
+                    return;
+                }
+                tText.GetComponent<Text>().color = color;
             }
         }
 

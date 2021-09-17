@@ -20,6 +20,9 @@ To install the mod just move the downloaded TrashItems.dll to the `<valheim-fold
 
 ## Change Log
 
+- 1.2.4
+    - Add trash label and color customization
+
 - 1.2.3
     - Add sound effects
     
