@@ -591,7 +591,8 @@ namespace EmoteWheel
                 if (Current > -1)
                 {
                     itemTexts[Current].color = HighlightColor;
-                    InventoryGui.instance.m_moveItemEffects.Create(base.transform.position, Quaternion.identity, null, 1f);
+                    // Play item sound effect
+                    InventoryGui.instance.m_moveItemEffects.Create(base.transform.position, Quaternion.identity, null, 1f, -1);
                 }
                 previous = Current;
             }
