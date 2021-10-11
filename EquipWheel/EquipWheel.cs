@@ -10,8 +10,9 @@ using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
-using EquipWheel;
+using EW = EquipWheel;
 using static EquipWheel.EquipWheelUI;
+
 
 
 #if EQUIPWHEEL_ONE
@@ -38,7 +39,7 @@ namespace EquipWheelFour
     [BepInPlugin("virtuacode.valheim.equipwheelfour", "Equip Wheel Mod (" + nameof(EquipWheelFour) + ")", "0.0.1")]
 #endif
 
-    public class EquipWheel : BaseUnityPlugin, WheelManager.IWheel
+    public class EquipWheel : BaseUnityPlugin, EW.WheelManager.IWheel
     {
         private static Harmony harmony;
         public static ManualLogSource MyLogger = BepInEx.Logging.Logger.CreateLogSource(Assembly.GetExecutingAssembly().GetName().Name);
@@ -50,6 +51,7 @@ namespace EquipWheelFour
         public static ConfigEntry<bool> AutoEquipShield;
         public static ConfigEntry<bool> HideHotkeyBar;
         public static ConfigEntry<int> IgnoreJoyStickDuration;
+        public static ConfigEntry<bool> UseRarityColoring;
 #endif
         public static ConfigEntry<bool> TriggerOnRelease;
         public static ConfigEntry<bool> TriggerOnClick;
@@ -70,7 +72,7 @@ namespace EquipWheelFour
         public static ConfigEntry<string> ItemNames;
         public static ConfigEntry<string> ItemNamesIgnored;
         public static ConfigEntry<string> ProtectedBindings;
-        public static ConfigEntry<bool> UseRarityColoring;
+
 
         private static EquipWheel instance;
         public static string[] itemNames = new string[] { };
@@ -113,7 +115,7 @@ namespace EquipWheelFour
                 Player localPlayer = Player.m_localPlayer;
 
                 bool canOpenMenu = !(localPlayer == null || localPlayer.IsDead() || localPlayer.InCutscene() || localPlayer.IsTeleporting()) &&
-                                   (!WheelManager.inventoryVisible) && (Chat.instance == null || !Chat.instance.HasFocus()) &&
+                                   (!EW.WheelManager.inventoryVisible) && (Chat.instance == null || !Chat.instance.HasFocus()) &&
                                    !global::Console.IsVisible() && !Menu.IsVisible() && TextViewer.instance != null &&
                                    !TextViewer.instance.IsVisible() && !GameCamera.InFreeFly() && !Minimap.IsOpen();
                 return canOpenMenu;
@@ -220,7 +222,7 @@ namespace EquipWheelFour
 
             harmony = Harmony.CreateAndPatchAll(typeof(Patcher));
 
-            WheelManager.AddWheel(this);
+            EW.WheelManager.AddWheel(this);
 
 #if EQUIPWHEEL_ONE
             try
@@ -241,7 +243,7 @@ namespace EquipWheelFour
 
         void OnDestroy()
         {
-            WheelManager.RemoveWheel(this);
+            EW.WheelManager.RemoveWheel(this);
             harmony?.UnpatchAll();
         }
 
@@ -262,7 +264,7 @@ namespace EquipWheelFour
                 if (Instance == null)
                     return false;
 
-                return WheelManager.BestMatchPressed(Instance);
+                return EW.WheelManager.BestMatchPressed(Instance);
             }
         }
 
@@ -285,7 +287,7 @@ namespace EquipWheelFour
                 if (Instance == null)
                     return false;
 
-                return WheelManager.BestMatchDown(Instance);
+                return EW.WheelManager.BestMatchDown(Instance);
             }
         }
 
@@ -535,7 +537,7 @@ namespace EquipWheelFour
 
                 ui.gameObject.SetActive(true);
                 visible = true;
-                WheelManager.Activate(EquipWheel.Instance);
+                EW.WheelManager.Activate(EquipWheel.Instance);
 
                 if (EquipWheel.TriggerOnClick.Value && (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.JoystickButton0)))
                 {
@@ -551,7 +553,7 @@ namespace EquipWheelFour
             }
 
 
-            if (EquipWheel.TriggerOnRelease.Value && (toggleDown || hotkeyRelease) && WheelManager.IsActive(EquipWheel.Instance))
+            if (EquipWheel.TriggerOnRelease.Value && (toggleDown || hotkeyRelease) && EW.WheelManager.IsActive(EquipWheel.Instance))
             {
                 if (ui.CurrentItem != null)
                 {
@@ -876,15 +878,15 @@ namespace EquipWheelFour
                     InventoryGui.instance.m_moveItemEffects.Create(base.transform.position, Quaternion.identity, null, 1f, -1);
                     text.gameObject.SetActive(true);
 
-                    if (EpicLootWrapper.instance != null)
+                    if (EW.EpicLootWrapper.instance != null)
                     {
-                        var itemColor = EpicLootWrapper.instance.GetItemColor(CurrentItem);
+                        var itemColor = EW.EpicLootWrapper.instance.GetItemColor(CurrentItem);
 
-                        if (itemColor.Equals(Color.white) || !EquipWheel.UseRarityColoring.Value)
+                        if (itemColor.Equals(Color.white) || !EW.EquipWheel.UseRarityColoring.Value)
                             itemColor = EquipWheel.GetHighlightColor;
 
 
-                        text.text = Localization.instance.Localize(EpicLootWrapper.instance.GetItemName(CurrentItem, itemColor));
+                        text.text = Localization.instance.Localize(EW.EpicLootWrapper.instance.GetItemName(CurrentItem, itemColor));
                     } else
                     {
                         text.text = Localization.instance.Localize(CurrentItem.m_shared.m_name);
@@ -902,11 +904,11 @@ namespace EquipWheelFour
 
             var color = CurrentItem == null ? new Color(0, 0, 0, 0.5f) : EquipWheel.GetHighlightColor;
 
-            if (CurrentItem != null && EpicLootWrapper.instance != null)
+            if (CurrentItem != null && EW.EpicLootWrapper.instance != null)
             {
-                var itemColor = EpicLootWrapper.instance.GetItemColor(CurrentItem);
+                var itemColor = EW.EpicLootWrapper.instance.GetItemColor(CurrentItem);
 
-                if (!itemColor.Equals(Color.white) && EquipWheel.UseRarityColoring.Value)
+                if (!itemColor.Equals(Color.white) && EW.EquipWheel.UseRarityColoring.Value)
                 {
                     color = itemColor;
                     highlight.GetComponent<Image>().color = color;
@@ -1004,7 +1006,7 @@ namespace EquipWheelFour
             {
                 elementData4.m_used = false;
             }
-            bool flag = ZInput.IsGamepadActive();
+
             int elem_index = 0;
             for (int j = 0; j < this.items.Length; j++)
             {
@@ -1042,8 +1044,8 @@ namespace EquipWheelFour
                     elementData5.m_amount.gameObject.SetActive(false);
                 }
 
-                if (EpicLootWrapper.instance != null)
-                    EpicLootWrapper.instance.ModifyElement(elementData5, itemData2);
+                if (EW.EpicLootWrapper.instance != null)
+                    EW.EpicLootWrapper.instance.ModifyElement(elementData5, itemData2);
 
                 elem_index++;
             }

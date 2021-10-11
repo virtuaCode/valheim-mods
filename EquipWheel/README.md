@@ -45,6 +45,8 @@ A config file will be created after running the game once while the mod is insta
 
 ## Change Log
 
+- Version 1.3.6
+    - Fix Bug with selecting Epic Loot items on EquipWheel Two, Three and Four
 - Version 1.3.5
     - Fix issue with Hearth & Home Patch
 - Version 1.3.4
