@@ -49,7 +49,7 @@ namespace EquipWheelFour
 
             var shieldEquipped = (__instance.GetLeftItem() != null &&
                                   __instance.GetLeftItem().m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield);
-            var equipShield = !shieldEquipped && ((Player)__instance).IsItemQueued(item) && item.m_equiped == false && item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon;
+            var equipShield = !shieldEquipped && ((Player)__instance).IsEquipActionQueued(item) && item.m_equiped == false && item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon;
 
             if (equipShield)
             {
