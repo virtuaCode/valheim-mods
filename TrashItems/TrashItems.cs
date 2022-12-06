@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using UnityEngine;
+using UnityEngine.Audio;
 using BepInEx;
 using HarmonyLib;
 using BepInEx.Configuration;
@@ -277,7 +278,8 @@ namespace TrashItems
 
                 if (___m_dragAmount == ___m_dragItem.m_stack)
                 {
-                    Player.m_localPlayer.RemoveFromEquipQueue(___m_dragItem);
+                    Player.m_localPlayer.RemoveEquipAction(___m_dragItem);
+                    //Player.m_localPlayer.RemoveFromEquipQueue(___m_dragItem);
                     Player.m_localPlayer.UnequipItem(___m_dragItem, false);
                     ___m_dragInventory.RemoveItem(___m_dragItem);
                 }
@@ -295,6 +297,7 @@ namespace TrashItems
                             break;
                         case SoundEffect.Sound1:
                             audio.PlayOneShot(sounds[0]);
+                           
                             break;
                         case SoundEffect.Sound2:
                             audio.PlayOneShot(sounds[1]);
