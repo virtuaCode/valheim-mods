@@ -2,8 +2,13 @@
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudio
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudio
 
+# Powershell Script to copy built mods to plugin folder
+link.ps1
+
 # DLL Libraries
 #Libraries/
+LibrariesBackup/
+
 
 ### VisualStudio ###
 ## Ignore Visual Studio temporary files, build results, and
