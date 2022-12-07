@@ -31,6 +31,8 @@ A config file will be created after running the game once while the mod is insta
 
 ## Change Log
 
+- Version 1.4.0
+    - Add new Emote Commands
 - Version 1.3.2
     - Fix issue with Mistlands Patch
 - Version 1.3.1

@@ -199,28 +199,8 @@ namespace EmoteWheel
 
                 return Input.GetKey(mainKey) && modifierKeys.All(Input.GetKey);
             }
-        }
+        }        
 
-        public static void ParseNames(string value, ref string[] arr)
-        {
-            if (ObjectDB.instance == null)
-                return;
-
-            var names = ParseTokens(value);
-            var ids = new List<string>();
-
-            foreach (var name in names)
-            {
-                var prefab = ObjectDB.instance.GetItemPrefab(name);
-                if (prefab != null)
-                {
-                    var item = prefab.GetComponent<ItemDrop>();
-                    ids.Add(item.m_itemData.m_shared.m_name);
-                }
-            }
-
-            arr = ids.Distinct().ToArray();
-        }
 
         public static string[] ParseTokens(string value)
         {
@@ -228,6 +208,7 @@ namespace EmoteWheel
             return value.Split(delimiterChars, StringSplitOptions.RemoveEmptyEntries);
         }
 
+    
     }
 
     public class EmoteGui : MonoBehaviour
@@ -354,6 +335,13 @@ namespace EmoteWheel
 
             switch (emote)
             {
+                case "blowkiss":
+                case "challenge":
+                case "bow":
+                case "comehere":
+                case "nonono":
+                case "wave":
+                case "thumbsup":
                 case "point":
                     player.FaceLookDirection();
                     player.StartEmote(emote, true);
@@ -380,11 +368,31 @@ namespace EmoteWheel
     public class EmoteWheelUI : MonoBehaviour
     {
         /* Constants */
-        public readonly float ANGLE_STEP = 360f / 7f;
         public readonly float INNER_DIAMETER = 340f;
+        private readonly Emote[] EMOTES = new Emote[]
+            {
+                new Emote {name = "Bow", command = "bow"  },
+                new Emote { name = "Roar", command = "roar" },
+                new Emote { name = "Cower", command = "cower" },
+                new Emote {name = "Blow Kiss", command = "blowkiss"  },
+                new Emote { name = "Challenge", command = "challenge" },
+                new Emote { name = "Headbang", command = "headbang" },
+                new Emote { name = "Dance", command = "dance" },
+                new Emote { name = "Despair", command = "despair" },
+                new Emote { name = "Flex", command = "flex" },
+                new Emote { name = "Sit", command = "sit" },
+                new Emote { name = "Kneel", command = "kneel" },
+                new Emote { name = "Point", command = "point" },
+                new Emote { name = "Cheer", command = "cheer" },
+                new Emote { name = "Come Here", command = "comehere" },
+                new Emote { name = "No No No", command = "nonono" },
+                new Emote { name = "Thumbs Up", command = "thumbsup" },
+                new Emote { name = "Wave", command = "wave" },
+                new Emote { name = "Cry", command = "cry" },
+            };
 
         [System.Serializable]
-        private class Item
+        private class Emote
         {
 
             public string name;
@@ -397,7 +405,6 @@ namespace EmoteWheel
         private GameObject textPrefab;
         private Transform itemsRoot;
 
-        private Item[] items;
         private Text[] itemTexts;
 
         private Color NormalColor = new Color(1, 1, 1, 0.5f);
@@ -410,9 +417,9 @@ namespace EmoteWheel
                 if ((!ZInput.IsGamepadActive() && MouseInCenter) || JoyStickInCenter)
                     return -1;
 
-                int index = Mod((int)Mathf.Round(Angle / ANGLE_STEP), 7);
+                int index = Mod((int)Mathf.Round(Angle / (360f / EMOTES.Length)), EMOTES.Length);
 
-                if (index >= items.Length)
+                if (index >= EMOTES.Length)
                     return -1;
 
                 return index;
@@ -436,7 +443,7 @@ namespace EmoteWheel
                 if (Current < 0)
                     return null;
 
-                return items[Current].command;
+                return EMOTES[Current].command;
             }
         }
 
@@ -491,7 +498,7 @@ namespace EmoteWheel
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = new Vector3(0, 300, 0);
-            text.fontSize = 40;
+            text.fontSize = 28;
             text.color = Color.white;
             //var font = Resources.GetBuiltinResource(typeof(Font), "Arial.ttf") as Font;
             text.font = font;
@@ -525,31 +532,23 @@ namespace EmoteWheel
 
             cursor = transform.Find("Cursor").gameObject;
             highlight = transform.Find("Highlight").gameObject;
+            highlight.GetComponent<Image>().material.SetFloat("_Degree", (360f / EMOTES.Length));
             textPrefab = BuildTextPrefab();
 
-            items = new Item[]
-            {
-                new Item {name = "Challenge", command = "challenge"  },
-                new Item {name = "Thumbs Up", command = "thumbsup"  },
-                new Item {name = "Sit", command = "sit"  },
-                new Item {name = "Cheer", command = "cheer"  },
-                new Item {name = "Point", command = "point"  },
-                new Item {name = "No No No", command = "nonono"  },
-                new Item {name = "Wave", command = "wave"  },
-            };
+            
 
             itemsRoot = transform.Find("Items");
 
-            itemTexts = new Text[items.Length];
+            itemTexts = new Text[EMOTES.Length];
 
-            for (int i = 0; i < items.Length; i++)
+            for (int i = 0; i < EMOTES.Length; i++)
             {
                 var text = Instantiate(textPrefab);
                 text.transform.SetParent(itemsRoot);
 
-                text.transform.RotateAround(transform.position, Vector3.forward, i * ANGLE_STEP);
+                text.transform.RotateAround(transform.position, Vector3.forward, i * (360f / EMOTES.Length));
                 text.transform.localRotation = Quaternion.AngleAxis(0, Vector3.forward);
-                text.GetComponent<Text>().text = items[i].name;
+                text.GetComponent<Text>().text = EMOTES[i].name;
                 text.SetActive(true);
 
                 itemTexts[i] = text.GetComponent<Text>();
@@ -612,7 +611,7 @@ namespace EmoteWheel
 
 
             cursor.transform.rotation = Quaternion.AngleAxis(Angle, Vector3.forward);
-            var highlightAngle = Current * ANGLE_STEP;
+            var highlightAngle = Current * (360f / EMOTES.Length);
             highlight.transform.rotation = Quaternion.AngleAxis(highlightAngle, Vector3.forward);
         }
     }
