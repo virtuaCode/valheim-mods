@@ -45,6 +45,8 @@ A config file will be created after running the game once while the mod is insta
 
 ## Change Log
 
+- Version 1.3.8
+    - Fix missing Patcher method
 - Version 1.3.7
     - Fix issue with Mistlands Patch
 - Version 1.3.6

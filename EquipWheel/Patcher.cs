@@ -106,7 +106,7 @@ namespace EquipWheelFour
                 __instance.gameObject.SetActive(false);
         }
 
-        [HarmonyPatch(typeof(Player), "AbortEquipQueue")]
+        [HarmonyPatch(typeof(Player), "ClearActionQueue")]
         [HarmonyPrefix]
         public static bool Prefix(Player __instance)
         {
