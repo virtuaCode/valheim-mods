@@ -155,8 +155,8 @@ namespace EquipWheelFour
             UseRightThumbstick = Config.Bind("Input", "UseRightThumbstick", false,
                 "When enabled the equip wheel will use the right thumbstick instead of the left");
 
-        /* Appereance */
-        HighlightColor = Config.Bind("Appereance", "HighlightColor", new Color(0.414f, 0.734f, 1f),
+            /* Appereance */
+            HighlightColor = Config.Bind("Appereance", "HighlightColor", new Color(0.414f, 0.734f, 1f),
                 "Color of the highlighted selection");
             GuiScale = Config.Bind("Appereance", "GuiScale", 0.5f, "Scale factor of the user interface");
 
@@ -626,8 +626,19 @@ namespace EquipWheelFour
         {
             get
             {
-                var x = ZInput.GetJoyLeftStickX();
-                var y = ZInput.GetJoyLeftStickY();
+                var x = 0.0f;
+                var y = 0.0f;
+
+                if (EquipWheel.UseRightThumbstick.Value == true)
+                {
+                    x = ZInput.GetJoyRightStickX();
+                    y = ZInput.GetJoyRightStickY();
+                }
+                else
+                {
+                    x = ZInput.GetJoyLeftStickX();
+                    y = ZInput.GetJoyLeftStickY();
+                }
                 return ZInput.IsGamepadActive() && x == 0 && y == 0;
             }
         }
