@@ -23,7 +23,7 @@ namespace EquipWheelFour
 
     public class Patcher
     {
-        /* Patches */
+    /* Patches */
 #if EQUIPWHEEL_ONE
         [HarmonyPatch(typeof(InventoryGui), "IsVisible")]
         [HarmonyPostfix]
@@ -86,7 +86,7 @@ namespace EquipWheelFour
         [HarmonyPostfix]
         public static void GetJoyLeftStickX_Postfix(ref float __result)
         {
-            if (EquipWheel.JoyStickIgnoreTime > 0)
+            if (EquipWheel.JoyStickIgnoreTime > 0 && EquipWheel.UseRightThumbstick.Value ==false)
                 __result = 0;
         }
 
@@ -94,7 +94,23 @@ namespace EquipWheelFour
         [HarmonyPostfix]
         public static void GetJoyLeftStickY_Postfix(ref float __result)
         {
-            if (EquipWheel.JoyStickIgnoreTime > 0)
+            if (EquipWheel.JoyStickIgnoreTime > 0 && EquipWheel.UseRightThumbstick.Value == false)
+                __result = 0;
+        }
+
+        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetJoyRightStickX))]
+        [HarmonyPostfix]
+        public static void GetJoyRightStickX_Postfix(ref float __result)
+        {
+            if (EquipWheel.JoyStickIgnoreTime > 0 && EquipWheel.UseRightThumbstick.Value == true)
+                __result = 0;
+        }
+
+        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetJoyRightStickY))]
+        [HarmonyPostfix]
+        public static void GetJoyRightStickY_Postfix(ref float __result)
+        {
+            if (EquipWheel.JoyStickIgnoreTime > 0 && EquipWheel.UseRightThumbstick.Value == true)
                 __result = 0;
         }
 
@@ -117,7 +133,7 @@ namespace EquipWheelFour
         }
 #endif
 
-        [HarmonyPatch(typeof(Player), "Awake")]
+    [HarmonyPatch(typeof(Player), "Awake")]
         [HarmonyPostfix]
         public static void Awake_Postfix()
         {
