@@ -23,7 +23,7 @@ namespace EquipWheelFour
 
     public class Patcher
     {
-    /* Patches */
+        /* Patches */
 #if EQUIPWHEEL_ONE
         [HarmonyPatch(typeof(InventoryGui), "IsVisible")]
         [HarmonyPostfix]
@@ -133,7 +133,7 @@ namespace EquipWheelFour
         }
 #endif
 
-    [HarmonyPatch(typeof(Player), "Awake")]
+        [HarmonyPatch(typeof(Player), "Awake")]
         [HarmonyPostfix]
         public static void Awake_Postfix()
         {
