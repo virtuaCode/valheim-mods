@@ -399,7 +399,7 @@ namespace TrashItems
 
         private void Update()
         {
-            if (ZInput.GetButtonDown("JoyButtonA") && handler.IsActive())
+            if (ZInput.GetButtonDown("JoyButtonA") && handler.IsActive)
             {
                 TrashItems.TrashItem();
                 // Switch back to inventory iab
