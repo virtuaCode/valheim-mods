@@ -44,7 +44,8 @@ A config file will be created after running the game once while the mod is insta
 [https://github.com/virtuaCode/valheim-mods](https://github.com/virtuaCode/valheim-mods)
 
 ## Change Log
-
+- Version 1.3.9
+    - Fix issue with renamed variable (m_equiped)
 - Version 1.3.8
     - Fix missing Patcher method
 - Version 1.3.7
