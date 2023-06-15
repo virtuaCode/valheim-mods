@@ -47,9 +47,12 @@ namespace EquipWheelFour
             if (fromInventoryGui)
                 return;
 
-            var shieldEquipped = (__instance.GetLeftItem() != null &&
-                                  __instance.GetLeftItem().m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield);
-            var equipShield = !shieldEquipped && ((Player)__instance).IsEquipActionQueued(item) && item.m_equiped == false && item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon;
+            MethodInfo methodInfo = typeof(Humanoid).GetMethod("GetLeftItem", BindingFlags.NonPublic | BindingFlags.Instance);
+            var leftItem = (ItemDrop.ItemData)methodInfo.Invoke(__instance, new object[] { });
+
+            var shieldEquipped = (leftItem != null &&
+                                  leftItem.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Shield);
+            var equipShield = !shieldEquipped && ((Player)__instance).IsEquipActionQueued(item) && item.m_equipped == false && item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.OneHandedWeapon;
 
             if (equipShield)
             {

@@ -1032,7 +1032,7 @@ namespace EquipWheelFour
                         elementData5.m_durability.ResetColor();
                     }
                 }
-                elementData5.m_equiped.SetActive(itemData2.m_equiped);
+                elementData5.m_equiped.SetActive(itemData2.m_equipped);
                 //elementData5.m_queued.SetActive(player.IsItemQueued(itemData2))
                 elementData5.m_queued.SetActive(player.IsEquipActionQueued(itemData2));
                 if (itemData2.m_shared.m_maxStackSize > 1)
