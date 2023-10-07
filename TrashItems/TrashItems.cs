@@ -11,6 +11,7 @@ using System.IO;
 using BepInEx.Logging;
 
 using Random = UnityEngine.Random;
+using TMPro;
 
 namespace TrashItems
 {
@@ -227,7 +228,7 @@ namespace TrashItems
                     LogErr("ac_text not found!");
                     return;
                 }
-                tText.GetComponent<Text>().text = text;
+                tText.GetComponent<TMP_Text>().text = text;
             }
 
             public void SetColor(Color color)
@@ -238,7 +239,7 @@ namespace TrashItems
                     LogErr("ac_text not found!");
                     return;
                 }
-                tText.GetComponent<Text>().color = color;
+                tText.GetComponent<TMP_Text>().color = color;
             }
         }
 
