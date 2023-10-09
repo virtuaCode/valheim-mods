@@ -20,6 +20,9 @@ To install the mod just move the downloaded TrashItems.dll to the `<valheim-fold
 
 ## Change Log
 
+- 1.2.7
+    - Fix issue with TMP Component
+
 - 1.2.6
     - Fix issue with UIGroupHandler (IsActive variable)
 
