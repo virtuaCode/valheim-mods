@@ -3,6 +3,7 @@ using BepInEx.Logging;
 using BepInEx.Configuration;
 using HarmonyLib;
 using System;
+using TMPro;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -295,7 +296,7 @@ namespace EquipWheelFour
         {
             if (ZInput.instance != null)
             {
-                var buttons = (Dictionary<string, ZInput.ButtonDef>)typeof(ZInput).GetField("m_buttons", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(ZInput.instance);
+                var buttons = GetButtonsFromZInput();
                 var bindings = ParseTokens(ProtectedBindings.Value);
 
                 foreach (KeyValuePair<string, ZInput.ButtonDef> entry in buttons)
@@ -310,10 +311,21 @@ namespace EquipWheelFour
                         replacedButtons.Add(entry.Key);
                         replacedKey = keyCode;
 
-                        ZInput.instance.Setbutton(entry.Key, KeyCode.None);
+                        SetButtonKey(entry.Key, KeyCode.None);
                     }
                 }
             }
+        }
+        
+        private static void SetButtonKey(string name, KeyCode keyCode)
+        {
+            var buttons = GetButtonsFromZInput();
+            buttons[name].m_key = keyCode;
+        }
+
+        private static Dictionary<string, ZInput.ButtonDef> GetButtonsFromZInput() 
+        { 
+            return (Dictionary<string, ZInput.ButtonDef>)typeof(ZInput).GetField("m_buttons", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(ZInput.instance);
         }
 
         public static void RestoreGamepadButton()
@@ -324,8 +336,7 @@ namespace EquipWheelFour
                 {
                     foreach (var button in replacedButtons)
                     {
-                        ZInput.instance.Setbutton(button, replacedKey);
-
+                        SetButtonKey(button, replacedKey);
                     }
                     replacedButtons.Clear();
                     replacedKey = KeyCode.None;
@@ -591,7 +602,7 @@ namespace EquipWheelFour
             public GameObject m_go;
             public Image m_icon;
             public GuiBar m_durability;
-            public Text m_amount;
+            public TextMeshProUGUI m_amount;
             public GameObject m_equiped;
             public GameObject m_queued;
             public GameObject m_selection;
@@ -985,10 +996,10 @@ namespace EquipWheelFour
 
                     elementData3.m_go.transform.localScale = new Vector3(ITEM_SCALE, ITEM_SCALE, ITEM_SCALE);
                     elementData3.m_go.transform.localPosition = new Vector3(x, y, 0f);
-                    elementData3.m_go.transform.Find("binding").GetComponent<Text>().text = (i + 1).ToString();
+                    elementData3.m_go.transform.Find("binding").GetComponent<TextMeshProUGUI>().text = (i + 1).ToString();
                     elementData3.m_icon = elementData3.m_go.transform.transform.Find("icon").GetComponent<Image>();
                     elementData3.m_durability = elementData3.m_go.transform.Find("durability").GetComponent<GuiBar>();
-                    elementData3.m_amount = elementData3.m_go.transform.Find("amount").GetComponent<Text>();
+                    elementData3.m_amount = elementData3.m_go.transform.Find("amount").GetComponent<TextMeshProUGUI>();
                     elementData3.m_equiped = elementData3.m_go.transform.Find("equiped").gameObject;
                     elementData3.m_queued = elementData3.m_go.transform.Find("queued").gameObject;
                     elementData3.m_selection = elementData3.m_go.transform.Find("selected").gameObject;
@@ -996,7 +1007,7 @@ namespace EquipWheelFour
 
                     if (EquipWheel.InventoryRow.Value > 1 || EquipWheel.UseItemTypeMatching.Value)
                     {
-                        elementData3.m_go.transform.Find("binding").GetComponent<Text>().enabled = false;
+                        elementData3.m_go.transform.Find("binding").GetComponent<TextMeshProUGUI>().enabled = false;
                     }
 
                     this.m_elements.Add(elementData3);
