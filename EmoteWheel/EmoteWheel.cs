@@ -122,6 +122,17 @@ namespace EmoteWheel
             harmony?.UnpatchAll();
         }
 
+        private static void SetButtonKey(string name, KeyCode keyCode)
+        {
+            var buttons = GetButtonsFromZInput();
+            buttons[name].m_key = keyCode;
+        }
+
+        private static Dictionary<string, ZInput.ButtonDef> GetButtonsFromZInput()
+        {
+            return (Dictionary<string, ZInput.ButtonDef>)typeof(ZInput).GetField("m_buttons", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(ZInput.instance);
+        }
+
         public static void ReplaceGamepadButton()
         {
             if (ZInput.instance != null)
@@ -141,7 +152,8 @@ namespace EmoteWheel
                         replacedButtons.Add(entry.Key);
                         replacedKey = keyCode;
 
-                        ZInput.instance.Setbutton(entry.Key, KeyCode.None);
+                        
+                        SetButtonKey(entry.Key, KeyCode.None);
                     }
                 }
             }
@@ -155,8 +167,7 @@ namespace EmoteWheel
                 {
                     foreach (var button in replacedButtons)
                     {
-                        ZInput.instance.Setbutton(button, replacedKey);
-
+                        SetButtonKey(button, replacedKey);
                     }
                     replacedButtons.Clear();
                     replacedKey = KeyCode.None;
