@@ -3,6 +3,7 @@ using System;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
+using static EquipWheel.EquipWheel;
 
 #if EQUIPWHEEL_ONE
 namespace EquipWheel {
@@ -25,14 +26,37 @@ namespace EquipWheelFour
     {
         /* Patches */
 #if EQUIPWHEEL_ONE
+
+        [HarmonyPatch(typeof(HotkeyBar), "Update")]
+        [HarmonyPrefix]
+        public static bool Prefix(HotkeyBar __instance)
+        {
+            if (EquipWheel.Instance == null)
+                return true;
+
+            if (EquipWheel.HotkeyDPad != null && EquipWheel.HotkeyDPad.Value == DPadButton.None)
+                return true;
+
+            Player localPlayer = Player.m_localPlayer;
+
+            if (localPlayer != null)
+            {
+                MethodInfo methodInfo = typeof(HotkeyBar).GetMethod("UpdateIcons", BindingFlags.NonPublic | BindingFlags.Instance);
+                methodInfo.Invoke(__instance, new object[] { localPlayer });
+            }
+
+
+            return false;
+        }
+
         [HarmonyPatch(typeof(InventoryGui), "IsVisible")]
         [HarmonyPostfix]
         public static void IsVisible_Postfix(ref bool __result)
         {
             WheelManager.inventoryVisible = __result;
+
             __result = __result || WheelManager.AnyVisible;
         }
-
 
         [HarmonyPatch(typeof(Humanoid), "UseItem")]
         [HarmonyPostfix]
@@ -85,19 +109,19 @@ namespace EquipWheelFour
             }
         }
 
-        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetJoyLeftStickX))]
+        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetJoyRightStickX))]
         [HarmonyPostfix]
-        public static void GetJoyLeftStickX_Postfix(ref float __result)
+        public static void GetJoyRightStickX_Postfix(ref float __result)
         {
-            if (EquipWheel.JoyStickIgnoreTime > 0)
+            if (WheelManager.GetJoyStickIgnoreTime() > 0)
                 __result = 0;
         }
 
-        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetJoyLeftStickY))]
+        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetJoyRightStickY))]
         [HarmonyPostfix]
-        public static void GetJoyLeftStickY_Postfix(ref float __result)
+        public static void GetJoyRightStickY_Postfix(ref float __result)
         {
-            if (EquipWheel.JoyStickIgnoreTime > 0)
+            if (WheelManager.GetJoyStickIgnoreTime() > 0)
                 __result = 0;
         }
 
@@ -119,6 +143,8 @@ namespace EquipWheelFour
             return !(run && EquipWheel.EquipWhileRunning.Value);
         }
 #endif
+
+
 
         [HarmonyPatch(typeof(Player), "Awake")]
         [HarmonyPostfix]

@@ -26,6 +26,7 @@ namespace EquipWheel
             bool IsVisible();
             void Hide();
             string GetName();
+            float JoyStickIgnoreTime();
         }
 
         public static void Activate(IWheel wheel)
@@ -77,6 +78,18 @@ namespace EquipWheel
             var result = wheels.OrderByDescending(w => w.GetKeyCountPressed()).FirstOrDefault();
 
             return wheel.Equals(result);
+        }
+
+        public static float GetJoyStickIgnoreTime ()
+        {
+            float time = 0;
+
+            foreach (var w in wheels)
+            {
+                time += w.JoyStickIgnoreTime();
+            }
+
+            return time;
         }
     }
 }
