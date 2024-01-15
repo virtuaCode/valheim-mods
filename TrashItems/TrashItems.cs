@@ -330,8 +330,8 @@ namespace TrashItems
             var okButton = dialog.transform.Find("win_bkg/Button_ok").GetComponent<Button>();
             okButton.onClick.RemoveAllListeners();
             okButton.onClick.AddListener(new UnityAction(OnConfirm));
-            okButton.GetComponentInChildren<Text>().text = "Trash";
-            okButton.GetComponentInChildren<Text>().color = new Color(1, 0.2f, 0.1f);
+            okButton.GetComponentInChildren<TextMeshProUGUI>().text = "Trash";
+            okButton.GetComponentInChildren<TextMeshProUGUI>().color = new Color(1, 0.2f, 0.1f);
 
             var cancelButton = dialog.transform.Find("win_bkg/Button_cancel").GetComponent<Button>();
             cancelButton.onClick.RemoveAllListeners();
@@ -339,13 +339,13 @@ namespace TrashItems
 
             dialog.transform.Find("win_bkg/Slider").gameObject.SetActive(false);
 
-            var text = dialog.transform.Find("win_bkg/Text").GetComponent<Text>();
+            var text = dialog.transform.Find("win_bkg/Text").GetComponent<TextMeshProUGUI>();
             text.text = Localization.instance.Localize(item.m_shared.m_name);
 
             var icon = dialog.transform.Find("win_bkg/Icon_bkg/Icon").GetComponent<Image>();
             icon.sprite = item.GetIcon();
 
-            var amount = dialog.transform.Find("win_bkg/amount").GetComponent<Text>();
+            var amount = dialog.transform.Find("win_bkg/amount").GetComponent<TextMeshProUGUI>();
 
             amount.text = itemAmount + "/" + item.m_shared.m_maxStackSize;
 
@@ -396,6 +396,7 @@ namespace TrashItems
         private void Awake()
         {
             handler = this.GetComponent<UIGroupHandler>();
+            handler.SetActive(false);
         }
 
         private void Update()
@@ -404,7 +405,7 @@ namespace TrashItems
             {
                 TrashItems.TrashItem();
                 // Switch back to inventory iab
-                typeof(InventoryGui).GetMethod("SetActiveGroup", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(InventoryGui.instance, new object[] { 1 });
+                typeof(InventoryGui).GetMethod("SetActiveGroup", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(InventoryGui.instance, new object[] { 1, false });
             }
         }
     }

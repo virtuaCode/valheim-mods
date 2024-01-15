@@ -20,6 +20,10 @@ To install the mod just move the downloaded TrashItems.dll to the `<valheim-fold
 
 ## Change Log
 
+- 1.2.8
+    - Fix issue with trashing item when pressing "A" button on gamepad
+    - Fix confirm dialog
+
 - 1.2.7
     - Fix issue with TMP Component
 
