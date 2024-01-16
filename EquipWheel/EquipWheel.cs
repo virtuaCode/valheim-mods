@@ -14,6 +14,8 @@ using UnityEngine.UI;
 using EW = EquipWheel;
 using static EquipWheel.EquipWheelUI;
 using System.Text.RegularExpressions;
+using static EquipWheel.WheelManager;
+using EquipWheel;
 
 
 
@@ -82,13 +84,7 @@ namespace EquipWheelFour
         public static float JoyStickIgnoreTime = 0;
         public static EquipGui Gui;
 
-        public enum DPadButton
-        {
-            None,
-            Left,
-            Right,
-            LeftOrRight
-        }
+
 
         public static Color GetHighlightColor => HighlightColor.Value;
 
@@ -142,7 +138,9 @@ namespace EquipWheelFour
                 Player localPlayer = Player.m_localPlayer;
 
                 bool canOpenMenu = !(localPlayer == null || localPlayer.IsDead() || localPlayer.InCutscene() || localPlayer.IsTeleporting())
-                    && !(!TakeInput(true) || InInventoryEtc()) && (!EW.WheelManager.inventoryVisible);
+                    && !(!TakeInput(true) || InInventoryEtc()) 
+                    && (!EW.WheelManager.inventoryVisible) 
+                    && !(IsUsingUseButton() && EW.WheelManager.pressedOnHovering);
                 return canOpenMenu;
             }
         }
@@ -155,6 +153,11 @@ namespace EquipWheelFour
             return openDelegate(null);
         }
 
+        public static bool IsUsingUseButton()
+        {
+            return ZInput.IsGamepadActive() && HotkeyDPad.Value == DPadButton.None;
+        }
+
         public void Awake()
         {
             instance = this;
@@ -165,7 +168,7 @@ namespace EquipWheelFour
             /* Input */
             Hotkey = Config.Bind("Input", "Hotkey", KeyboardShortcut.Deserialize("G"),
     "Hotkey for opening equip wheel menu");
-            HotkeyDPad = Config.Bind("Input", "HotkeyDPad", DPadButton.Left, "Hotkey on the D-Pad (None, Left, Right or LeftOrRight)");
+            HotkeyDPad = Config.Bind("Input", "HotkeyDPad", DPadButton.None, "Hotkey on the D-Pad (None, Left, Right or LeftOrRight)");
             TriggerOnRelease = Config.Bind("Input", "TriggerOnRelease", true,
                 "Releasing the Hotkey will equip/use the selected item");
             TriggerOnClick = Config.Bind("Input", "TriggerOnClick", false,
@@ -310,7 +313,7 @@ namespace EquipWheelFour
                     switch (HotkeyDPad.Value)
                     {
                         case DPadButton.None:
-                            return false;
+                            return ZInput.GetButtonDown("JoyUse");
 
                         case DPadButton.Left:
                             return ZInput.GetButtonDown("JoyHotbarLeft");
@@ -345,7 +348,7 @@ namespace EquipWheelFour
                     switch (HotkeyDPad.Value)
                     {
                         case DPadButton.None:
-                            return false;
+                            return ZInput.GetButtonUp("JoyUse");
 
                         case DPadButton.Left:
                             return ZInput.GetButtonUp("JoyHotbarLeft");
@@ -382,7 +385,7 @@ namespace EquipWheelFour
                     switch (HotkeyDPad.Value)
                     {
                         case DPadButton.None:
-                            return false;
+                            return ZInput.GetButton("JoyUse");
 
                         case DPadButton.Left:
                             return ZInput.GetButton("JoyHotbarLeft");
@@ -557,11 +560,27 @@ namespace EquipWheelFour
 
             Player localPlayer = Player.m_localPlayer;
 
+            if (WheelManager.pressedOnHovering)
+            {
+                if (ZInput.GetButtonUp("JoyUse"))
+                {
+                    WheelManager.pressedOnHovering = false;
+                    WheelManager.hoverTextVisible = false;
+                    return;
+                }
+            }
+
+            if (EquipWheel.IsShortcutDown && EquipWheel.IsUsingUseButton())
+            {
+                EW.WheelManager.pressedOnHovering = EW.WheelManager.pressedOnHovering || EW.WheelManager.hoverTextVisible;
+            }
+
             if (!EquipWheel.CanOpenMenu)
             {
                 Hide();
                 return;
             }
+
 
             if (EquipWheel.IsShortcutDown && EquipWheel.ToggleMenu.Value && toggleVisible < 2 && EquipWheel.BestMatchDown)
                 toggleVisible++;
@@ -662,9 +681,18 @@ namespace EquipWheelFour
         {
             get
             {
-                var x = ZInput.GetJoyRightStickX();
-                var y = ZInput.GetJoyRightStickY();
-                return ZInput.IsGamepadActive() && x == 0 && y == 0;
+                if (EquipWheel.HotkeyDPad.Value == DPadButton.None)
+                {
+                    var x = ZInput.GetJoyLeftStickX();
+                    var y = ZInput.GetJoyLeftStickY();
+                    return ZInput.IsGamepadActive() && x == 0 && y == 0;
+                }
+                else
+                {
+                    var x = ZInput.GetJoyRightStickX();
+                    var y = ZInput.GetJoyRightStickY();
+                    return ZInput.IsGamepadActive() && x == 0 && y == 0;
+                }
             }
         }
 
@@ -695,11 +723,22 @@ namespace EquipWheelFour
             {
                 if (ZInput.IsGamepadActive())
                 {
-                    var x = ZInput.GetJoyRightStickX();
-                    var y = -ZInput.GetJoyRightStickY();
 
-                    if (x != 0 || y != 0)
-                        return Mathf.Atan2(y, x) * Mathf.Rad2Deg - 90;
+                    if (EquipWheel.HotkeyDPad.Value == DPadButton.None){
+
+                        var x = ZInput.GetJoyLeftStickX();
+                        var y = -ZInput.GetJoyLeftStickY();
+
+                        if (x != 0 || y != 0)
+                            return Mathf.Atan2(y, x) * Mathf.Rad2Deg - 90;
+                    } else
+                    {
+                        var x = ZInput.GetJoyRightStickX();
+                        var y = -ZInput.GetJoyRightStickY();
+
+                        if (x != 0 || y != 0)
+                            return Mathf.Atan2(y, x) * Mathf.Rad2Deg - 90;
+                    }
                 }
 
 

@@ -4,6 +4,7 @@ using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 using static EquipWheel.EquipWheel;
+using static EquipWheel.WheelManager;
 
 #if EQUIPWHEEL_ONE
 namespace EquipWheel {
@@ -27,28 +28,6 @@ namespace EquipWheelFour
         /* Patches */
 #if EQUIPWHEEL_ONE
 
-        [HarmonyPatch(typeof(HotkeyBar), "Update")]
-        [HarmonyPrefix]
-        public static bool Prefix(HotkeyBar __instance)
-        {
-            if (EquipWheel.Instance == null)
-                return true;
-
-            if (EquipWheel.HotkeyDPad != null && EquipWheel.HotkeyDPad.Value == DPadButton.None)
-                return true;
-
-            Player localPlayer = Player.m_localPlayer;
-
-            if (localPlayer != null)
-            {
-                MethodInfo methodInfo = typeof(HotkeyBar).GetMethod("UpdateIcons", BindingFlags.NonPublic | BindingFlags.Instance);
-                methodInfo.Invoke(__instance, new object[] { localPlayer });
-            }
-
-
-            return false;
-        }
-
         [HarmonyPatch(typeof(InventoryGui), "IsVisible")]
         [HarmonyPostfix]
         public static void IsVisible_Postfix(ref bool __result)
@@ -56,6 +35,22 @@ namespace EquipWheelFour
             WheelManager.inventoryVisible = __result;
 
             __result = __result || WheelManager.AnyVisible;
+        }
+
+        [HarmonyPatch(typeof(Hud), "UpdateCrosshair")]
+        [HarmonyPostfix]
+        public static void IsVisible_Postfix(Hud __instance, Player player, float bowDrawPercentage)
+        {
+            GameObject hoverObject = player.GetHoverObject();
+            Interactable hoverable = hoverObject ? hoverObject.GetComponentInParent<Interactable>() : null;
+            if (hoverable != null && !TextViewer.instance.IsVisible())
+            {
+                WheelManager.hoverTextVisible = true;
+            } else
+            {
+                WheelManager.hoverTextVisible = false;
+            }
+
         }
 
         [HarmonyPatch(typeof(Humanoid), "UseItem")]
@@ -125,6 +120,23 @@ namespace EquipWheelFour
                 __result = 0;
         }
 
+        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetJoyLeftStickX))]
+        [HarmonyPostfix]
+        public static void GetJoyLeftStickX_Postfix(ref float __result)
+        {
+            if (WheelManager.GetJoyStickIgnoreTime() > 0)
+                __result = 0;
+        }
+
+        [HarmonyPatch(typeof(ZInput), nameof(ZInput.GetJoyLeftStickY))]
+        [HarmonyPostfix]
+        public static void GetJoyLeftStickY_Postfix(ref float __result)
+        {
+            if (WheelManager.GetJoyStickIgnoreTime() > 0)
+                __result = 0;
+        }
+
+
         [HarmonyPatch(typeof(HotkeyBar), "Update")]
         [HarmonyPostfix]
         public static void Update_Postfix(HotkeyBar __instance)
@@ -163,6 +175,29 @@ namespace EquipWheelFour
             g.transform.SetParent(Menu.instance.transform.parent, false);
 
             EquipWheel.Log("Spawned EquipGui!");
+        }
+
+
+        [HarmonyPatch(typeof(HotkeyBar), "Update")]
+        [HarmonyPrefix]
+        public static bool Prefix(HotkeyBar __instance)
+        {
+            if (EquipWheel.Instance == null)
+                return true;
+
+            if (EquipWheel.HotkeyDPad != null && EquipWheel.HotkeyDPad.Value == DPadButton.None)
+                return true;
+
+            Player localPlayer = Player.m_localPlayer;
+
+            if (localPlayer != null)
+            {
+                MethodInfo methodInfo = typeof(HotkeyBar).GetMethod("UpdateIcons", BindingFlags.NonPublic | BindingFlags.Instance);
+                methodInfo.Invoke(__instance, new object[] { localPlayer });
+            }
+
+
+            return false;
         }
 
 

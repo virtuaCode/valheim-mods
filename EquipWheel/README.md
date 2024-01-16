@@ -2,6 +2,9 @@
 
 This mod adds an user interface for equipping/using items in an easier and faster way. The menu will be visible by holding the 'G' key (can be changed). On gamepads it's the LEFT button on the D-Pad by default.
 
+**New in version 1.5.1: Changed Gamepad bindings**
+Hotkeys for Gamepad has been changed. The default is now the 'Use' button (X on Xbox Controllers). 
+
 **New in version 1.5.0: Changed Gamepad bindings and Regex filtering**
 Hotkeys for Gamepad has been changed. The default is now the LEFT (or RIGHT) button on the D-Pad. 
 Filtering items now supports Regular Expressions.
@@ -48,6 +51,9 @@ A config file will be created after running the game once while the mod is insta
 [https://github.com/virtuaCode/valheim-mods](https://github.com/virtuaCode/valheim-mods)
 
 ## Change Log
+
+- Version 1.5.1
+    - Changed the default hotkey on gamepads to the 'Use' button (X on Xbox controllers)
 - Version 1.5.0
     - Changed gamepad hotkey to the LEFT button on the D-Pad
     - Regex support for filtering

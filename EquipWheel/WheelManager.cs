@@ -9,7 +9,16 @@ namespace EquipWheel
         private static readonly HashSet<IWheel> wheels = new HashSet<IWheel>();
         private static IWheel activeWheel;
         public static bool inventoryVisible = false;
-        
+        public static bool hoverTextVisible = false;
+        public static bool pressedOnHovering = false;
+
+        public enum DPadButton
+        {
+            None,
+            Left,
+            Right,
+            LeftOrRight
+        }
 
         public static bool AnyVisible
         {
