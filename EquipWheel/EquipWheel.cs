@@ -50,6 +50,7 @@ namespace EquipWheelFour
 
         public static ConfigEntry<KeyboardShortcut> Hotkey;
         public static ConfigEntry<DPadButton> HotkeyDPad;
+        public static ConfigEntry<bool> UseSitButton;
 #if EQUIPWHEEL_ONE
         public static ConfigEntry<bool> EquipWhileRunning;
         public static ConfigEntry<bool> AutoEquipShield;
@@ -155,7 +156,7 @@ namespace EquipWheelFour
 
         public static bool IsUsingUseButton()
         {
-            return ZInput.IsGamepadActive() && HotkeyDPad.Value == DPadButton.None;
+            return ZInput.IsGamepadActive() && HotkeyDPad.Value == DPadButton.None && !UseSitButton.Value;
         }
 
         public void Awake()
@@ -169,6 +170,7 @@ namespace EquipWheelFour
             Hotkey = Config.Bind("Input", "Hotkey", KeyboardShortcut.Deserialize("G"),
     "Hotkey for opening equip wheel menu");
             HotkeyDPad = Config.Bind("Input", "HotkeyDPad", DPadButton.None, "Hotkey on the D-Pad (None, Left, Right or LeftOrRight)");
+            UseSitButton = Config.Bind("Input", "UseSitButton", false, "When enabled use the sit button as hotkey (HotkeyDPad has to be set to None)");
             TriggerOnRelease = Config.Bind("Input", "TriggerOnRelease", true,
                 "Releasing the Hotkey will equip/use the selected item");
             TriggerOnClick = Config.Bind("Input", "TriggerOnClick", false,
@@ -313,7 +315,10 @@ namespace EquipWheelFour
                     switch (HotkeyDPad.Value)
                     {
                         case DPadButton.None:
-                            return ZInput.GetButtonDown("JoyUse");
+                            if (UseSitButton.Value)
+                                return ZInput.GetButtonDown("JoySit");
+                            else
+                                return ZInput.GetButtonDown("JoyUse");
 
                         case DPadButton.Left:
                             return ZInput.GetButtonDown("JoyHotbarLeft");
@@ -348,7 +353,10 @@ namespace EquipWheelFour
                     switch (HotkeyDPad.Value)
                     {
                         case DPadButton.None:
-                            return ZInput.GetButtonUp("JoyUse");
+                            if (UseSitButton.Value)
+                                return ZInput.GetButtonUp("JoySit");
+                            else
+                                return ZInput.GetButtonUp("JoyUse");
 
                         case DPadButton.Left:
                             return ZInput.GetButtonUp("JoyHotbarLeft");
@@ -385,7 +393,11 @@ namespace EquipWheelFour
                     switch (HotkeyDPad.Value)
                     {
                         case DPadButton.None:
-                            return ZInput.GetButton("JoyUse");
+                            if (UseSitButton.Value)
+                                return ZInput.GetButton("JoySit");
+                            else
+                                return ZInput.GetButton("JoyUse");
+
 
                         case DPadButton.Left:
                             return ZInput.GetButton("JoyHotbarLeft");

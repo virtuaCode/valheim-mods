@@ -216,5 +216,24 @@ namespace EquipWheelFour
 
             return notNumber || notDown || !EquipWheel.CanOpenMenu || ZInput.IsGamepadActive();
         }
+
+        [HarmonyPatch(typeof(Player), "Update")]
+        [HarmonyPostfix]
+        public static void Update()
+        {
+
+            Player localPlayer = Player.m_localPlayer;
+
+            if (localPlayer == null)
+                return;
+
+            if (EquipWheel.UseSitButton.Value && EquipWheel.HotkeyDPad.Value == DPadButton.None && (ZInput.GetButtonDown("JoySit") || ZInput.GetButtonUp("JoySit")))
+            {
+                MethodInfo methodInfo = typeof(Player).GetMethod("StopEmote", BindingFlags.NonPublic | BindingFlags.Instance);
+                methodInfo.Invoke(localPlayer, new object[] {});
+            }
+
+            return;
+        }
     }
 }
