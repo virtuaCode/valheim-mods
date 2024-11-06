@@ -512,6 +512,7 @@ namespace EquipWheelFour
 
         public static bool visible = false;
         public int toggleVisible = 0;
+        public static bool toggleDownWasPressed = false;
 
 
         void Awake()
@@ -567,11 +568,20 @@ namespace EquipWheelFour
 
         private void Update()
         {
+            if (EquipWheel.ToggleMenu.Value)
+                HandleToggleEnabled();
+            else
+                HandleToggleDisabled();
+        }
+
+        private void ReduceJoyStickIgnoreTime()
+        {
             if (EquipWheel.JoyStickIgnoreTime > 0)
                 EquipWheel.JoyStickIgnoreTime -= Time.deltaTime;
+        }
 
-            Player localPlayer = Player.m_localPlayer;
-
+        private void HandlePressedHovering()
+        {
             if (WheelManager.pressedOnHovering)
             {
                 if (ZInput.GetButtonUp("JoyUse"))
@@ -586,6 +596,85 @@ namespace EquipWheelFour
             {
                 EW.WheelManager.pressedOnHovering = EW.WheelManager.pressedOnHovering || EW.WheelManager.hoverTextVisible;
             }
+        }
+
+        private void HandleToggleEnabled()
+        {
+
+            ReduceJoyStickIgnoreTime();
+            HandlePressedHovering();
+            
+            if (!EquipWheel.CanOpenMenu)
+            {
+                Hide();
+                return;
+            }
+
+            if (toggleDownWasPressed)
+            {
+                if (EquipWheel.IsShortcutUp)
+                {
+                    Hide();
+                    toggleDownWasPressed = false;
+                    return;
+                }
+
+                return;
+            }
+            
+            if (EquipWheel.IsShortcutDown && toggleVisible < 2)
+                toggleVisible++;
+
+            var toggleDown = EquipWheel.IsShortcutDown && toggleVisible == 2;
+
+            if (EquipWheel.TriggerOnRelease.Value && toggleDown)
+            {
+                if (EW.WheelManager.IsActive(EquipWheel.Instance))
+                {
+                    UseCurrentItem();
+                    toggleDownWasPressed = true;
+                    return;
+                }
+            }
+
+            if (toggleVisible > 0 && !toggleDown)
+            {
+                if (!visible)
+                {
+                    ui.gameObject.SetActive(true);
+                    visible = true;
+                    EW.WheelManager.Activate(EquipWheel.Instance);
+                }
+
+
+                if (EquipWheel.TriggerOnClick.Value && (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.JoystickButton0)))
+                {
+                    UseCurrentItem(true);
+                }
+
+                return;
+            }
+            Hide();
+        }
+
+        private void UseCurrentItem(bool flash = false)
+        {
+            if (ui.CurrentItem != null)
+            {
+                if (flash)
+                    ui.Flash();
+
+                Player localPlayer = Player.m_localPlayer;
+                localPlayer.UseItem(null, ui.CurrentItem, false);
+                EquipWheel.JoyStickIgnoreTime = global::EquipWheel.EquipWheel.IgnoreJoyStickDuration.Value / 1000f;
+            }
+        }
+
+        private void HandleToggleDisabled()
+        {
+
+            ReduceJoyStickIgnoreTime();
+            HandlePressedHovering();
 
             if (!EquipWheel.CanOpenMenu)
             {
@@ -593,48 +682,38 @@ namespace EquipWheelFour
                 return;
             }
 
-
-            if (EquipWheel.IsShortcutDown && EquipWheel.ToggleMenu.Value && toggleVisible < 2 && EquipWheel.BestMatchDown)
-                toggleVisible++;
-
-            var toggleDown =
-                EquipWheel.IsShortcutDown && EquipWheel.ToggleMenu.Value && toggleVisible == 2 && EquipWheel.BestMatchDown;
-            var hotkeyRelease = EquipWheel.IsShortcutUp && !EquipWheel.ToggleMenu.Value;
-
-            if ((EquipWheel.ToggleMenu.Value && toggleVisible > 0 && !toggleDown) || (EquipWheel.IsShortcutPressed && ZInput.IsGamepadActive()) || (EquipWheel.IsShortcutPressed && (EquipWheel.BestMatchPressed || EquipWheel.BestMatchDown) && !EquipWheel.ToggleMenu.Value))
+            if (EquipWheel.TriggerOnRelease.Value && EquipWheel.IsShortcutUp)
             {
+                UseCurrentItem();
+                Hide();
+                return;
+            }
 
-                ui.gameObject.SetActive(true);
-                visible = true;
+            if ((EquipWheel.IsShortcutPressed && ZInput.IsGamepadActive())
+                || (EquipWheel.IsShortcutPressed && (EquipWheel.BestMatchPressed
+                || EquipWheel.BestMatchDown)))
+            {
                 
-                EW.WheelManager.Activate(EquipWheel.Instance);
+
+                if (!visible)
+                {
+                    ui.gameObject.SetActive(true);
+                    visible = true;
+                    EW.WheelManager.Activate(EquipWheel.Instance);
+                }
+
 
                 if (EquipWheel.TriggerOnClick.Value && (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.JoystickButton0)))
                 {
-                    if (ui.CurrentItem != null)
-                    {
-                        ui.Flash();
-                        localPlayer.UseItem(null, ui.CurrentItem, false);
-                    }
+                    UseCurrentItem(true);
                 }
 
-                if (!toggleDown)
-                    return;
-            }
-
-
-            if (EquipWheel.TriggerOnRelease.Value && (toggleDown || hotkeyRelease) && EW.WheelManager.IsActive(EquipWheel.Instance))
-            {
-                if (ui.CurrentItem != null)
-                {
-                    localPlayer.UseItem(null, ui.CurrentItem, false);
-                }
-
-                EquipWheel.JoyStickIgnoreTime = global::EquipWheel.EquipWheel.IgnoreJoyStickDuration.Value / 1000f;
+                return;
             }
 
             Hide();
         }
+
     }
 
 
@@ -645,6 +724,7 @@ namespace EquipWheelFour
         public readonly float ITEM_DISTANCE = 295f;
         public readonly float ITEM_SCALE = 2f;
         public readonly float INNER_DIAMETER = 340f;
+        public readonly float LENGTH_THRESHOLD = 0.1f;
 
         private GameObject cursor;
         private Text text;
@@ -677,7 +757,7 @@ namespace EquipWheelFour
         {
             get
             {
-                if ((!ZInput.IsGamepadActive() && MouseInCenter) || JoyStickInCenter)
+                if ((!ZInput.IsGamepadActive() && MouseInCenter) || JoyStickInCenter || (ZInput.IsGamepadActive() && Lenght < LENGTH_THRESHOLD))
                     return -1;
 
                 int index = Mod((int)Mathf.Round((-Angle) / ANGLE_STEP), 8);
@@ -726,6 +806,29 @@ namespace EquipWheelFour
                 float radius = INNER_DIAMETER / 2 * gameObject.transform.lossyScale.x;
                 var dir = Input.mousePosition - cursor.transform.position;
                 return dir.magnitude <= radius;
+            }
+        }
+
+        public double Lenght
+        {
+            get
+            {
+                if (EquipWheel.HotkeyDPad.Value == DPadButton.None)
+                {
+
+                    var x = ZInput.GetJoyLeftStickX();
+                    var y = ZInput.GetJoyLeftStickY();
+
+                    return Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2));
+
+                }
+                else
+                {
+                    var x = ZInput.GetJoyRightStickX();
+                    var y = ZInput.GetJoyRightStickY();
+
+                    return Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2));
+                }
             }
         }
 
