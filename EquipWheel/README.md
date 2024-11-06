@@ -61,6 +61,8 @@ A config file will be created after running the game once while the mod is insta
 
 ## Change Log
 
+- Version 1.5.3
+    - Fix issue with selecting items with controllers
 - Version 1.5.2
     - Add config entry for using 'Sit'-Button as a hotkey
 - Version 1.5.1
