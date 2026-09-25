@@ -25,7 +25,7 @@ namespace EquipWheelFour
 
     public class Patcher
     {
-        /* Patches */
+    /* Patches */
 #if EQUIPWHEEL_ONE
 
         [HarmonyPatch(typeof(InventoryGui), "IsVisible")]
@@ -158,23 +158,22 @@ namespace EquipWheelFour
 
 
 
-        [HarmonyPatch(typeof(Player), "Awake")]
+        [HarmonyPatch(typeof(Hud), "Awake")]
         [HarmonyPostfix]
-        public static void Awake_Postfix()
+        public static void Hud_Awake_Postfix(Hud __instance)
         {
             var objectName = "EquipGui (" + Assembly.GetExecutingAssembly().GetName().Name + ")";
 
-            if (Menu.instance == null || GameObject.Find(objectName))
+            if (GameObject.Find(objectName))
                 return;
 
-            GameObject g = new GameObject(objectName);
-            var gui = g.AddComponent<EquipGui>();
+            var g = new GameObject(objectName);
 
-            EquipWheel.Gui = gui;
-            
-            g.transform.SetParent(Menu.instance.transform.parent, false);
+            EquipWheel.Gui = g.AddComponent<EquipGui>();
 
-            EquipWheel.Log("Spawned EquipGui!");
+            g.transform.SetParent(__instance.transform, false);
+
+            EquipWheel.Log("Spawned EquipGui under HUD!");
         }
 
 

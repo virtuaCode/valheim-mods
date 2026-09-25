@@ -2,61 +2,67 @@ name: Publish
 
 on:
   push:
-    tags: 
+    tags:
       - 'v*'
-    
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    outputs: 
-      release_url: ${{steps.share_release_url.outputs.url}}
 
+jobs:
+  vars:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+      mod: ${{ steps.vars.outputs.mod }}
     steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - uses: actions/setup-dotnet@v1
-      
-      - name: Install mono and xbuild
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git mono-complete mono-xbuild nuget
-      
-      - name: Install NexusUploader
-        run: dotnet tool install -g NexusUploader
-        
       - name: Get the Release version tag and mod name
         id: vars
-        run: |
-          echo ::set-output name=tag::$(echo ${GITHUB_REF:11} | cut -d'-' -f 1 | cat)
-          echo ::set-output name=mod::$(echo ${GITHUB_REF:11} | cut -d'-' -f 2 | cat)
-        
+        # Fail this and dependant jobs on invalid tag name
+        run: |-
+          if [[ "$GITHUB_REF_NAME" =~ ^v([0-9\.]+)-(.+)$ ]]; then
+            echo "tag=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+            echo "mod=${BASH_REMATCH[2]}" >> $GITHUB_OUTPUT
+          else
+            echo '::error::invalid release tag "${{ github.ref }}", required schema: v1.0.0-ModName'
+            exit 1
+          fi
+
+  publish:
+    needs: vars
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v5
+      - name: Install mono and xbuild
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: git mono-complete mono-xbuild
+
       - name: Update const string BepinEx version field
-        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' ${{steps.vars.outputs.mod}}/${{steps.vars.outputs.mod}}.cs
+        run: sed -i 's/"0.0.1"/"${{needs.vars.outputs.tag}}"/g' ${{needs.vars.outputs.mod}}/${{needs.vars.outputs.mod}}.cs
 
       - name: Check file existence
         id: check_files
-        run: echo ::set-output name=exists::$((test -f ${{steps.vars.outputs.mod}}/manifest.json && echo true) || echo false)
+        run: echo "exists=$((test -f ${{needs.vars.outputs.mod}}/manifest.json && echo true) || echo false)" >> $GITHUB_OUTPUT
 
       - name: Update manifest/json version field
-        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' ${{steps.vars.outputs.mod}}/manifest.json
+        run: sed -i 's/"0.0.1"/"${{needs.vars.outputs.tag}}"/g' ${{needs.vars.outputs.mod}}/manifest.json
         if: steps.check_files.outputs.exists == 'true'
-        
+
       - name: Build and Create the package
-        run: xbuild ValheimMod.sln /t:${{steps.vars.outputs.mod}} /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
-      
+        run: xbuild ValheimMod.sln /t:${{needs.vars.outputs.mod}} /p:Configuration=Release /p:Version=${{needs.vars.outputs.tag}} /p:OutputPath=..
+
       # Package for Thunderstore
       - uses: papeloto/action-zip@v1
         with:
-          files: ${{steps.vars.outputs.mod}}.dll ${{steps.vars.outputs.mod}}/icon.png ${{steps.vars.outputs.mod}}/manifest.json ${{steps.vars.outputs.mod}}/README.md
-          dest: ${{steps.vars.outputs.mod}}.zip
+          files: ${{needs.vars.outputs.mod}}.dll ${{needs.vars.outputs.mod}}/icon.png ${{needs.vars.outputs.mod}}/manifest.json ${{needs.vars.outputs.mod}}/README.md
+          dest: ${{needs.vars.outputs.mod}}_${{needs.vars.outputs.tag}}_thunderstore.zip
         if: steps.check_files.outputs.exists == 'true'
 
       # Package for Nexus Mods
       - uses: papeloto/action-zip@v1
         with:
-          files: ${{steps.vars.outputs.mod}}.dll
-          dest: ${{steps.vars.outputs.mod}}_nexusmods.zip
+          files: ${{needs.vars.outputs.mod}}.dll
+          dest: ${{needs.vars.outputs.mod}}_${{ needs.vars.outputs.tag }}_nexusmods.zip
 
       - name: Change Log
         id: changelog
@@ -68,47 +74,25 @@ jobs:
 
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
           body: |
             Change Log
             ${{ env.CHANGELOG }}
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{steps.vars.outputs.mod}} ${{steps.vars.outputs.tag}}
+          name: Release ${{needs.vars.outputs.mod}} ${{needs.vars.outputs.tag}}
           draft: false
           prerelease: false
+          files: |-
+            ${{needs.vars.outputs.mod}}*.zip
 
-      - name: Share release url
-        id: share_release_url
-        run: echo "::set-output name=url::${{ steps.create_release.outputs.upload_url }}"
-      
-      - name: Upload Release Asset
-        id: upload-thunderstore-asset 
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}  
-          asset_path: ./${{steps.vars.outputs.mod}}.zip
-          asset_name: ${{steps.vars.outputs.mod}}_thunderstore.zip
-          asset_content_type: application/zip
-        if: steps.check_files.outputs.exists == 'true'
-
-      - name: Upload Release Asset
-        id: upload-nexusmod-asset 
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} 
-          asset_path: ./${{steps.vars.outputs.mod}}_nexusmods.zip
-          asset_name: ${{steps.vars.outputs.mod}}_nexusmods.zip
-          asset_content_type: application/zip
+      # - name: Install NexusUploader
+      #   run: dotnet tool install -g NexusUploader
+      #
       #- name: Upload
       #  run: |
-      #    unex upload 504 ValheimLib_release.zip -v ${{ steps.vars.outputs.tag }}
+      #    unex upload 504 ValheimLib_release.zip -v ${{ needs.vars.outputs.tag }}
       #  env:
       #    UNEX_APIKEY: ${{ secrets.NEXUS_API_KEY }}
       #    UNEX_COOKIES: ${{ secrets.NEXUS_COOKIES }}
@@ -118,95 +102,70 @@ jobs:
 
   variants:
     if: endsWith(github.ref, 'EquipWheel')
+    needs: vars
     strategy:
       matrix:
         mod: [EquipWheelTwo, EquipWheelThree, EquipWheelFour]
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-dotnet@v1
-      
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+
       - name: Install mono and xbuild
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git mono-complete mono-xbuild nuget
-      
-      - name: Get the Release version tag and mod name
-        id: vars
-        run: |
-          echo ::set-output name=tag::$(echo ${GITHUB_REF:11} | cut -d'-' -f 1 | cat)
-          echo ::set-output name=mod::$(echo ${GITHUB_REF:11} | cut -d'-' -f 2 | cat)
-        
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: git mono-complete mono-xbuild
+
       - name: Update const string BepinEx version field
-        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' EquipWheel/EquipWheel.cs
+        run: sed -i 's/"0.0.1"/"${{needs.vars.outputs.tag}}"/g' EquipWheel/EquipWheel.cs
 
       - name: Build and Create the package
-        run: xbuild ValheimMod.sln /t:${{matrix.mod}} /p:Configuration=Release /p:Version=${{steps.vars.outputs.tag}} /p:OutputPath=..
-      
-      - uses: actions/upload-artifact@v3
+        run: xbuild ValheimMod.sln /t:${{matrix.mod}} /p:Configuration=Release /p:Version=${{needs.vars.outputs.tag}} /p:OutputPath=..
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: more-equipwheels
+          name: more-equipwheels-${{matrix.mod}}
           path: ${{matrix.mod}}.dll
 
   bundle-variants:
     if: endsWith(github.ref, 'EquipWheel')
     runs-on: ubuntu-latest
-    needs: 
+    needs:
+      - vars
       - publish
       - variants
 
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Get the Release version tag and mod name
-        id: vars
-        run: |
-          echo ::set-output name=tag::$(echo ${GITHUB_REF:11} | cut -d'-' -f 1 | cat)
-          echo ::set-output name=mod::$(echo ${GITHUB_REF:11} | cut -d'-' -f 2 | cat)
+      - uses: actions/checkout@v5
 
       - name: Update const string version field (1/2)
-        run: sed -i 's/"0.0.1"/"${{steps.vars.outputs.tag}}"/g' MoreEquipWheels/manifest.json
-        
+        run: sed -i 's/"0.0.1"/"${{needs.vars.outputs.tag}}"/g' MoreEquipWheels/manifest.json
+
       - name: Update const string version field (2/2)
-        run: sed -i 's/"virtuaCode-EquipWheel-0.0.1"/"virtuaCode-EquipWheel-${{steps.vars.outputs.tag}}"/g' MoreEquipWheels/manifest.json
+        run: sed -i 's/"virtuaCode-EquipWheel-0.0.1"/"virtuaCode-EquipWheel-${{needs.vars.outputs.tag}}"/g' MoreEquipWheels/manifest.json
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v5
         with:
-          name: more-equipwheels
+          pattern: more-equipwheels-*
+          merge-multiple: true
 
       - uses: papeloto/action-zip@v1
         with:
           files: EquipWheelTwo.dll EquipWheelThree.dll EquipWheelFour.dll MoreEquipWheels/icon.png MoreEquipWheels/manifest.json MoreEquipWheels/README.md
-          dest: More_EquipWheels_thunderstore.zip
+          dest: More_EquipWheels_${{ needs.vars.outputs.tag }}_thunderstore.zip
 
       - uses: papeloto/action-zip@v1
         with:
           files: EquipWheelTwo.dll EquipWheelThree.dll EquipWheelFour.dll
-          dest: More_EquipWheels_nexusmods.zip
+          dest: More_EquipWheels_${{ needs.vars.outputs.tag }}_nexusmods.zip
 
       - name: Upload Release Asset
-        id: upload-nexusmod-asset 
-        uses: actions/upload-release-asset@v1
+        id: upload-asset
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ needs.publish.outputs.release_url }}  
-          asset_path: ./More_EquipWheels_nexusmods.zip
-          asset_name: More_EquipWheels_nexusmods.zip
-          asset_content_type: application/zip
-
-      - name: Upload Release Asset
-        id: upload-thunderstore-asset 
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.publish.outputs.release_url }} 
-          asset_path: ./More_EquipWheels_thunderstore.zip
-          asset_name: More_EquipWheels_thunderstore.zip
-          asset_content_type: application/zip
-
-      
-
+          files: |-
+            More_EquipWheels*.zip

@@ -61,6 +61,10 @@ A config file will be created after running the game once while the mod is insta
 
 ## Change Log
 
+- Version 1.5.5
+    - Update Libraries and compile for Valheim 1.0+
+- Version 1.5.4
+    - Fix support for Valheim v0.220.4+, thanks to [xVilho](https://github.com/virtuaCode/valheim-mods/issues/34#issuecomment-3233156997)
 - Version 1.5.3
     - Fix issue with selecting items with controllers
 - Version 1.5.2
